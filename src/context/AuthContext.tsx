@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
 import { INITIAL_USERS } from '../data/initialData';
+import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -52,6 +54,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem('learnlink_users', JSON.stringify(users));
   }, [users]);
+
+  // Firestore real-time users synchronization across devices
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(
+        collection(db, 'users'),
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const remoteUsers: UserProfile[] = [];
+            snapshot.forEach((docSnap) => {
+              remoteUsers.push(docSnap.data() as UserProfile);
+            });
+
+            setUsers(prev => {
+              const map = new Map<string, UserProfile>();
+              INITIAL_USERS.forEach(u => map.set(u.id, u));
+              prev.forEach(u => map.set(u.id, u));
+              remoteUsers.forEach(u => map.set(u.id, u));
+              return Array.from(map.values());
+            });
+          }
+        },
+        (err) => {
+          console.warn('Firestore user listener notice:', err);
+        }
+      );
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore onSnapshot init notice:', e);
+    }
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -139,6 +172,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(prev => [newUser, ...prev]);
     setCurrentUser(newUser);
 
+    // Save to Firestore globally for cross-device visibility
+    try {
+      setDoc(doc(db, 'users', newId), newUser).catch(err => {
+        console.warn('Firestore setDoc notice:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore save notice:', e);
+    }
+
     return { success: true, user: newUser };
   };
 
@@ -157,7 +199,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUserProfile = (id: string, updates: Partial<UserProfile>) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
+    setUsers(prev => {
+      const updatedList = prev.map(u => u.id === id ? { ...u, ...updates } : u);
+      const updatedUser = updatedList.find(u => u.id === id);
+      if (updatedUser) {
+        try {
+          setDoc(doc(db, 'users', id), updatedUser, { merge: true }).catch(err => {
+            console.warn('Firestore setDoc merge notice:', err);
+          });
+        } catch (e) {
+          console.warn('Firestore update notice:', e);
+        }
+      }
+      return updatedList;
+    });
+
     if (currentUser?.id === id) {
       setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
     }
