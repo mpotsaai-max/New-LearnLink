@@ -23,7 +23,7 @@ interface StudentDashboardViewProps {
 
 export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNavigate, onSelectTutor }) => {
   const { currentUser } = useAuth();
-  const { sessions, transactions, rescheduleSession, setActiveChatUser } = useApp();
+  const { sessions, transactions, rescheduleSession, setActiveChatUser, setActiveDailySession } = useApp();
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'escrow_transactions'>('upcoming');
   const [selectedRatingSession, setSelectedRatingSession] = useState<{
@@ -216,14 +216,19 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNa
 
                   <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                     {session.status === 'accepted' && session.videoCallUrl && (
-                      <a
-                        href={session.videoCallUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-4 py-2 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#1e3a5f] flex items-center gap-1.5 shadow-sm"
+                      <button
+                        onClick={() => setActiveDailySession({
+                          sessionId: session.id,
+                          subject: session.subject,
+                          tutorName: session.tutorName,
+                          studentName: session.studentName,
+                          videoCallUrl: session.videoCallUrl,
+                          pricePula: session.pricePula
+                        })}
+                        className="px-4 py-2 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#1e3a5f] flex items-center gap-1.5 shadow-md transition-transform hover:scale-[1.02]"
                       >
-                        <Video className="w-4 h-4 text-[#feae2c]" /> Join Video Lesson
-                      </a>
+                        <Video className="w-4 h-4 text-[#feae2c]" /> Launch Daily.co Classroom
+                      </button>
                     )}
 
                     <button

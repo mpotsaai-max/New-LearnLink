@@ -6,6 +6,8 @@ import { Footer } from './components/Footer';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { EmailNotificationDrawer } from './components/EmailNotificationDrawer';
 import { ChatModal } from './components/ChatModal';
+import { DailyClassroomModal } from './components/DailyClassroomModal';
+import { useApp } from './context/AppContext';
 
 import { LandingView } from './views/LandingView';
 import { TutorDirectoryView } from './views/TutorDirectoryView';
@@ -16,6 +18,7 @@ import { AdminDashboardView } from './views/AdminDashboardView';
 import { AuthModal } from './views/AuthModal';
 
 export const AppContent: React.FC = () => {
+  const { activeDailySession, setActiveDailySession, completeSessionAndReleaseEscrow } = useApp();
   const [currentTab, setCurrentTab] = useState<string>('landing');
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>('usr_tutor_1');
 
@@ -90,6 +93,16 @@ export const AppContent: React.FC = () => {
       <KeyboardShortcutsModal onNavigate={setCurrentTab} />
       <EmailNotificationDrawer />
       <ChatModal />
+
+      {/* Daily.co Embedded Virtual Classroom Modal */}
+      {activeDailySession && (
+        <DailyClassroomModal
+          isOpen={!!activeDailySession}
+          onClose={() => setActiveDailySession(null)}
+          sessionData={activeDailySession}
+          onCompleteSession={completeSessionAndReleaseEscrow}
+        />
+      )}
 
       {/* Auth Modal */}
       {isAuthOpen && (

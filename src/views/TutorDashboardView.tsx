@@ -20,7 +20,7 @@ import { useApp } from '../context/AppContext';
 
 export const TutorDashboardView: React.FC = () => {
   const { currentUser } = useAuth();
-  const { sessions, transactions, updateSessionStatus, completeSessionAndReleaseEscrow, setActiveChatUser } = useApp();
+  const { sessions, transactions, updateSessionStatus, completeSessionAndReleaseEscrow, setActiveChatUser, setActiveDailySession } = useApp();
 
   const [activeTab, setActiveTab] = useState<'requests' | 'schedule' | 'earnings'>('requests');
 
@@ -273,14 +273,19 @@ export const TutorDashboardView: React.FC = () => {
 
                   <div className="flex items-center gap-2 w-full md:w-auto">
                     {session.videoCallUrl && (
-                      <a
-                        href={session.videoCallUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3.5 py-2 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#1e3a5f] flex items-center gap-1.5"
+                      <button
+                        onClick={() => setActiveDailySession({
+                          sessionId: session.id,
+                          subject: session.subject,
+                          tutorName: session.tutorName,
+                          studentName: session.studentName,
+                          videoCallUrl: session.videoCallUrl,
+                          pricePula: session.pricePula
+                        })}
+                        className="px-3.5 py-2 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#1e3a5f] flex items-center gap-1.5 shadow-md transition-transform hover:scale-[1.02]"
                       >
-                        <Video className="w-4 h-4 text-[#feae2c]" /> Open Video Room
-                      </a>
+                        <Video className="w-4 h-4 text-[#feae2c]" /> Launch Daily.co Room
+                      </button>
                     )}
 
                     <button

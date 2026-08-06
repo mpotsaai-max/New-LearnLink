@@ -181,7 +181,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
-                  💻 Online (Video Link)
+                  💻 Online (Daily.co Video)
                 </button>
                 <button
                   type="button"

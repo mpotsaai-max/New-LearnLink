@@ -28,6 +28,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
   const [location, setLocation] = useState('Gaborone');
   const [selectedSubject, setSelectedSubject] = useState('Mathematics');
 
+  // Terms & Conditions Acceptance
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -53,6 +56,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
     } else if (mode === 'register') {
       if (!fullName.trim() || !email.trim() || !phoneNumber.trim()) {
         setErrorMessage('Please complete all required fields.');
+        return;
+      }
+
+      // Mandatory Terms & Conditions Check
+      if (!acceptedTerms) {
+        setErrorMessage(
+          role === 'tutor'
+            ? 'You must accept the LearnLink Terms of Service and the 15% Platform Fee agreement to register as a tutor.'
+            : 'You must accept LearnLink Terms of Service to complete registration.'
+        );
         return;
       }
 
@@ -301,6 +314,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
                   className="w-full p-2 text-xs border border-slate-200 rounded-lg bg-white"
                 />
               </div>
+
+              {/* 15% Platform Fee Disclosure Box */}
+              <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-950 space-y-1">
+                <div className="font-bold flex items-center justify-between text-[#022448]">
+                  <span>💼 LearnLink 15% Platform Commission:</span>
+                  <span className="text-amber-800 font-extrabold">15% Deducted</span>
+                </div>
+                <p className="text-[10.5px] leading-tight text-slate-700">
+                  Platform fee covers Daily.co HD WebRTC video classroom hosting, Mobile Money Escrow security, and student matching.
+                </p>
+                <div className="pt-1.5 border-t border-amber-200/80 flex items-center justify-between font-mono font-bold text-[11px]">
+                  <span>Your Net Payout (85%):</span>
+                  <span className="text-emerald-700 font-black text-xs">P{(hourlyRate * 0.85).toFixed(2)} / hr</span>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* Terms & Conditions Acceptance Checkbox */}
+          {mode === 'register' && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={e => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-[#022448] rounded border-slate-300 focus:ring-[#022448] cursor-pointer"
+                  required
+                />
+                <span className="text-[11px] text-slate-700 leading-snug">
+                  {role === 'tutor' ? (
+                    <>
+                      I accept LearnLink&apos;s <strong className="text-[#022448]">Tutor Terms of Service & Code of Conduct</strong> and agree to the mandatory <strong className="text-amber-800">15% platform commission</strong> deducted on session payouts.
+                    </>
+                  ) : (
+                    <>
+                      I agree to LearnLink&apos;s <strong className="text-[#022448]">Terms of Service</strong>, Privacy Policy, and <strong className="text-emerald-800">Mobile Money Escrow Protection Policy</strong>.
+                    </>
+                  )}
+                </span>
+              </label>
             </div>
           )}
 

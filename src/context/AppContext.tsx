@@ -97,6 +97,24 @@ interface AppContextType {
   setIsShortcutsModalOpen: (open: boolean) => void;
   activeChatUser: { id: string; name: string; avatar?: string } | null;
   setActiveChatUser: (user: { id: string; name: string; avatar?: string } | null) => void;
+  
+  // Daily.co Virtual Classroom Session Modal
+  activeDailySession: {
+    sessionId: string;
+    subject: string;
+    tutorName: string;
+    studentName: string;
+    videoCallUrl?: string;
+    pricePula?: number;
+  } | null;
+  setActiveDailySession: (session: {
+    sessionId: string;
+    subject: string;
+    tutorName: string;
+    studentName: string;
+    videoCallUrl?: string;
+    pricePula?: number;
+  } | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -150,6 +168,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isEmailDrawerOpen, setIsEmailDrawerOpen] = useState(false);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<{ id: string; name: string; avatar?: string } | null>(null);
+  const [activeDailySession, setActiveDailySession] = useState<{
+    sessionId: string;
+    subject: string;
+    tutorName: string;
+    studentName: string;
+    videoCallUrl?: string;
+    pricePula?: number;
+  } | null>(null);
 
   // Persistence Effects
   useEffect(() => { localStorage.setItem('learnlink_sessions', JSON.stringify(sessions)); }, [sessions]);
@@ -230,7 +256,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentMethod: bookingData.paymentMethod,
       escrowStatus: 'escrow_held',
       meetingMode: bookingData.meetingMode,
-      videoCallUrl: bookingData.meetingMode === 'Online' ? `https://meet.learnlink.co.bw/${sessionId}` : undefined,
+      videoCallUrl: bookingData.meetingMode === 'Online' ? `https://learnlink.daily.co/${sessionId}` : undefined,
       locationStr: bookingData.meetingMode === 'In-person' ? 'To be agreed with tutor' : undefined,
       notes: bookingData.notes,
       createdAt: new Date().toISOString().slice(0, 10)
@@ -607,7 +633,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isShortcutsModalOpen,
         setIsShortcutsModalOpen,
         activeChatUser,
-        setActiveChatUser
+        setActiveChatUser,
+        activeDailySession,
+        setActiveDailySession
       }}
     >
       {children}
