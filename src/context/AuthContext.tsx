@@ -7,7 +7,12 @@ import { db } from '../firebase/config';
 interface AuthContextType {
   currentUser: UserProfile | null;
   users: UserProfile[];
-  login: (email: string, pass: string) => { success: boolean; error?: string };
+  login: (email: string, pass: string) => {
+    success: boolean;
+    error?: string;
+    requiresEmailVerification?: boolean;
+    unverifiedUser?: UserProfile;
+  };
   register: (userData: {
     fullName: string;
     email: string;
@@ -20,7 +25,14 @@ interface AuthContextType {
     location?: string;
     qualifications?: string;
     university?: string;
+    courseOrMajor?: string;
+    collegeOrUniversity?: string;
+    yearsOfExperience?: string;
+    resumeDocUrl?: string;
+    academicRecordDocUrl?: string;
+    omangIdDocUrl?: string;
   }) => { success: boolean; error?: string; user?: UserProfile };
+  verifyStudentEmail: (email: string) => { success: boolean; error?: string };
   logout: () => void;
   switchDemoUser: (role: UserRole) => void;
   updateUserProfile: (id: string, updates: Partial<UserProfile>) => void;
@@ -113,7 +125,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (found.status === 'suspended') {
       return { success: false, error: 'Your account has been suspended by LearnLink Admin. Please contact support@learnlink.co.bw.' };
     }
+
+    // Tutor Approval Check: Cannot log in before admin approval
+    if (found.role === 'tutor' && (found.status === 'pending_verification' || !found.isVerifiedTutor)) {
+      return {
+        success: false,
+        error: 'Your tutor registration and uploaded credentials (ID, Transcripts, Resume) are currently under review by LearnLink Admin. Tutors cannot log in until account approval.'
+      };
+    }
+
+    // Student Email Verification Check
+    if (found.role === 'student' && found.emailVerified === false) {
+      return {
+        success: false,
+        requiresEmailVerification: true,
+        unverifiedUser: found,
+        error: 'Your student account email address has not been verified yet. Please enter your email verification code to proceed.'
+      };
+    }
+
     setCurrentUser(found);
+    return { success: true };
+  };
+
+  const verifyStudentEmail = (email: string) => {
+    const user = users.find(u => u.email.trim().toLowerCase() === email.trim().toLowerCase());
+    if (!user) return { success: false, error: 'User account not found.' };
+
+    const updated = { ...user, emailVerified: true };
+    setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
+    setCurrentUser(updated);
+
+    try {
+      setDoc(doc(db, 'users', user.id), { emailVerified: true }, { merge: true }).catch(err => {
+        console.warn('Firestore setDoc verify notice:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore update notice:', e);
+    }
+
     return { success: true };
   };
 
@@ -129,6 +179,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     location?: string;
     qualifications?: string;
     university?: string;
+    courseOrMajor?: string;
+    collegeOrUniversity?: string;
+    yearsOfExperience?: string;
+    resumeDocUrl?: string;
+    academicRecordDocUrl?: string;
+    omangIdDocUrl?: string;
   }) => {
     // Unique Email & Phone validation check
     if (isEmailTaken(data.email)) {
@@ -140,6 +196,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const isTutor = data.role === 'tutor';
     const newId = `usr_${Date.now()}`;
+    
+    // Default placeholder avatar (for tutors, picture upload is enabled AFTER approval)
+    const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.fullName)}`;
+
     const newUser: UserProfile = {
       id: newId,
       email: data.email.trim(),
@@ -148,29 +208,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: data.role,
       status: isTutor ? 'pending_verification' : 'active',
       isVerifiedTutor: false,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.fullName)}`,
+      avatarUrl: defaultAvatar,
       joinedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      bio: data.bio || '',
+      bio: data.bio || (isTutor ? `Tutor in ${data.courseOrMajor || 'General Subjects'} from ${data.collegeOrUniversity || data.university || 'University'}.` : ''),
       subjects: data.subjects || (isTutor ? ['Mathematics'] : []),
       academicLevels: data.academicLevels || (isTutor ? ['Secondary (BGCSE/IGCSE)'] : []),
       hourlyRatePula: data.hourlyRatePula || 150,
       location: data.location || 'Gaborone',
-      qualifications: data.qualifications || 'Certified Tutor',
-      university: data.university || 'University of Botswana',
+      qualifications: data.qualifications || data.courseOrMajor || 'Degree Candidate',
+      university: data.collegeOrUniversity || data.university || 'University of Botswana',
+      courseOrMajor: data.courseOrMajor || '',
+      collegeOrUniversity: data.collegeOrUniversity || data.university || '',
+      yearsOfExperience: data.yearsOfExperience || '',
       packages: isTutor ? [
         { id: `pkg_${newId}_1`, name: 'Starter Pass (4 Sessions)', sessionCount: 4, pricePula: (data.hourlyRatePula || 150) * 4 * 0.95 },
         { id: `pkg_${newId}_2`, name: 'Intensive Pass (8 Sessions)', sessionCount: 8, pricePula: (data.hourlyRatePula || 150) * 8 * 0.88, isBestValue: true }
       ] : [],
-      rating: 0,
+      rating: 0, // Initial rating is strictly 0.0 upon registration & initial approval
       reviewCount: 0,
       totalEarningsPula: 0,
       activeStudentsCount: 0,
       pendingRequestsCount: 0,
-      verificationDocs: isTutor ? [`National_ID_Omang_${data.fullName.replace(/\s+/g, '_')}.pdf`, `Degree_Certificate_${data.fullName.replace(/\s+/g, '_')}.pdf`] : []
+      verificationDocs: isTutor ? [
+        data.omangIdDocUrl ? `Omang/ID: ${data.omangIdDocUrl}` : `National_Omang_ID_${data.fullName.replace(/\s+/g, '_')}.pdf`,
+        data.academicRecordDocUrl ? `Academic Record: ${data.academicRecordDocUrl}` : `Academic_Record_${data.fullName.replace(/\s+/g, '_')}.pdf`,
+        data.resumeDocUrl ? `Resume/CV: ${data.resumeDocUrl}` : `Resume_CV_${data.fullName.replace(/\s+/g, '_')}.pdf`
+      ] : [],
+      resumeDocUrl: data.resumeDocUrl || '',
+      academicRecordDocUrl: data.academicRecordDocUrl || '',
+      omangIdDocUrl: data.omangIdDocUrl || '',
+      emailVerified: isTutor ? false : false // Requires email verification for students
     };
 
     setUsers(prev => [newUser, ...prev]);
-    setCurrentUser(newUser);
+
+    // Do NOT log in tutors automatically upon registration because approval is mandatory
+    if (!isTutor) {
+      // For student, we leave currentUser unassigned until email verification step is completed
+    }
 
     // Save to Firestore globally for cross-device visibility
     try {
@@ -226,6 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         users,
         login,
         register,
+        verifyStudentEmail,
         logout,
         switchDemoUser,
         updateUserProfile,

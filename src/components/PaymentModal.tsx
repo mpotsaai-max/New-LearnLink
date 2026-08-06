@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Smartphone, ShieldCheck, CheckCircle2, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { X, Smartphone, ShieldCheck, CheckCircle2, Lock, ArrowRight, Loader2, FileText, Upload, AlertCircle } from 'lucide-react';
 import { PaymentMethod } from '../types';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 interface PaymentModalProps {
   tutorId: string;
@@ -25,6 +26,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onClose
 }) => {
   const { createBooking } = useApp();
+  const { currentUser, updateUserProfile } = useAuth();
 
   const [sessionType, setSessionType] = useState<'single' | 'package'>('single');
   const [hours, setHours] = useState(1.5);
@@ -39,9 +41,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [meetingMode, setMeetingMode] = useState<'Online' | 'In-person'>('Online');
   const [notes, setNotes] = useState('');
 
+  // Student Prerequisites States
+  const [studentIdDocName, setStudentIdDocName] = useState(currentUser?.studentIdDocUrl || '');
+  const [prefPaymentMethod, setPrefPaymentMethod] = useState<PaymentMethod>(
+    currentUser?.preferredPaymentMethod || 'OrangeMoney'
+  );
+
   // Payment method selection
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('OrangeMoney');
-  const [mobileNumber, setMobileNumber] = useState('+267 71 234 567');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    currentUser?.preferredPaymentMethod || 'OrangeMoney'
+  );
+  const [mobileNumber, setMobileNumber] = useState(currentUser?.phoneNumber || '+267 71 234 567');
   const [pinCode, setPinCode] = useState('');
   
   // States: 'details' -> 'confirm_pin' -> 'processing' -> 'success'
@@ -52,6 +62,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const handleStartPayment = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check Student Prerequisites: Student ID PDF & Preferred Payment Method
+    if (currentUser?.role === 'student') {
+      if (!studentIdDocName.trim()) {
+        setErrorMessage('Mandatory Requirement: Please upload your Student ID or National Omang (PDF / Image) before making a booking.');
+        return;
+      }
+      if (!prefPaymentMethod) {
+        setErrorMessage('Mandatory Requirement: Please select your preferred payment method before booking.');
+        return;
+      }
+
+      // Save student prerequisites to profile
+      updateUserProfile(currentUser.id, {
+        studentIdDocUrl: studentIdDocName.trim(),
+        preferredPaymentMethod: prefPaymentMethod
+      });
+    }
+
     if (!mobileNumber || mobileNumber.length < 8) {
       setErrorMessage('Please enter a valid Botswana mobile phone number (+267 ...).');
       return;
@@ -130,6 +159,56 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         {step === 'details' && (
           <form onSubmit={handleStartPayment} className="space-y-5">
             
+            {/* Student Mandatory Booking Prerequisites Box */}
+            {currentUser?.role === 'student' && (
+              <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2 text-amber-950 font-bold text-xs border-b border-amber-200/80 pb-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                  <span>Mandatory Student Verification Prerequisites</span>
+                </div>
+
+                {/* Upload Student ID PDF */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1 flex items-center justify-between">
+                    <span>Student National Omang or Student ID (PDF/Image) <span className="text-red-500">*</span></span>
+                    {studentIdDocName && <span className="text-[10px] font-bold text-emerald-700">✓ Attached</span>}
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => {
+                      const fname = e.target.files?.[0]?.name || 'Student_Omang_ID.pdf';
+                      setStudentIdDocName(fname);
+                    }}
+                    className="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-[#022448] file:text-white cursor-pointer"
+                  />
+                  {studentIdDocName && (
+                    <p className="text-[10px] font-mono text-slate-600 mt-1">Current File: {studentIdDocName}</p>
+                  )}
+                </div>
+
+                {/* Preferred Payment Method */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                    Preferred Mobile Money Gateway <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={prefPaymentMethod}
+                    onChange={(e) => {
+                      const val = e.target.value as PaymentMethod;
+                      setPrefPaymentMethod(val);
+                      setPaymentMethod(val);
+                    }}
+                    className="w-full p-2 text-xs border border-amber-200 rounded-xl bg-white font-bold text-[#022448]"
+                  >
+                    <option value="OrangeMoney">OrangeMoney (Orange Botswana)</option>
+                    <option value="Smega">Smega (BTC Mobile)</option>
+                    <option value="MyZaka">MyZaka (Mascom Wireless)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Booking Options */}
             <div>
               <label className="block text-xs font-bold text-[#022448] uppercase tracking-wider mb-2">

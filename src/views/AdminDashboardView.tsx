@@ -384,22 +384,75 @@ export const AdminDashboardView: React.FC = () => {
       {/* Review Qualification Docs Modal */}
       {selectedDocsModalUser && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl relative">
-            <h3 className="font-bold text-xl text-[#022448]">Applicant Verification Documents</h3>
-            <p className="text-xs text-slate-500">
-              Reviewing degree and identity documents for <strong>{selectedDocsModalUser.fullName}</strong>.
-            </p>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-xl text-[#022448]">Applicant Academic Review</h3>
+                <p className="text-xs text-slate-500">
+                  Reviewing application documents for <strong>{selectedDocsModalUser.fullName}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedDocsModalUser(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
 
+            {/* Application Overview Box */}
+            <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100 space-y-1.5 text-xs text-slate-700">
+              <div className="flex justify-between">
+                <span className="font-bold text-slate-500">Course / Program:</span>
+                <span className="font-bold text-[#022448]">{selectedDocsModalUser.courseOrMajor || selectedDocsModalUser.qualifications || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-bold text-slate-500">Institution:</span>
+                <span className="font-bold text-[#022448]">{selectedDocsModalUser.collegeOrUniversity || selectedDocsModalUser.university || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-bold text-slate-500">Experience:</span>
+                <span className="font-bold text-[#022448]">{selectedDocsModalUser.yearsOfExperience || 'Specified in CV'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-bold text-slate-500">Initial Approval Rating:</span>
+                <span className="font-black text-amber-600">⭐ 0.0 (New Tutor)</span>
+              </div>
+            </div>
+
+            {/* Document Attachments List */}
             <div className="space-y-2">
-              {selectedDocsModalUser.verificationDocs?.map((doc, idx) => (
-                <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#022448]" />
-                    <span className="font-mono text-slate-800">{doc}</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Verified File</span>
+              <span className="text-xs font-bold text-slate-700 block">Uploaded Vetting Files:</span>
+              
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#022448]" />
+                  <span className="font-mono font-medium text-slate-800">
+                    {selectedDocsModalUser.omangIdDocUrl ? `National ID / Omang: ${selectedDocsModalUser.omangIdDocUrl}` : selectedDocsModalUser.verificationDocs?.[0] || 'National_Omang_ID.pdf'}
+                  </span>
                 </div>
-              ))}
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">PDF / Image</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#022448]" />
+                  <span className="font-mono font-medium text-slate-800">
+                    {selectedDocsModalUser.academicRecordDocUrl ? `Academic Record: ${selectedDocsModalUser.academicRecordDocUrl}` : selectedDocsModalUser.verificationDocs?.[1] || 'Academic_Transcripts.pdf'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">PDF / Image</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#022448]" />
+                  <span className="font-mono font-medium text-slate-800">
+                    {selectedDocsModalUser.resumeDocUrl ? `Resume / CV: ${selectedDocsModalUser.resumeDocUrl}` : selectedDocsModalUser.verificationDocs?.[2] || 'Resume_Curriculum_Vitae.pdf'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">PDF / Doc</span>
+              </div>
             </div>
 
             <div className="pt-2 flex gap-3">
@@ -408,9 +461,9 @@ export const AdminDashboardView: React.FC = () => {
                   approveTutorVerification(selectedDocsModalUser.id);
                   setSelectedDocsModalUser(null);
                 }}
-                className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700"
+                className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-1 shadow-sm"
               >
-                Approve Credentials
+                <CheckCircle2 className="w-4 h-4" /> Approve Applicant Credentials
               </button>
               <button
                 onClick={() => setSelectedDocsModalUser(null)}

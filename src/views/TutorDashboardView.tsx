@@ -13,16 +13,22 @@ import {
   Award,
   Sparkles,
   CheckCircle2,
-  Lock
+  Lock,
+  Camera,
+  Edit3,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 
 export const TutorDashboardView: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, updateUserProfile } = useAuth();
   const { sessions, transactions, updateSessionStatus, completeSessionAndReleaseEscrow, setActiveChatUser, setActiveDailySession } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'requests' | 'schedule' | 'earnings'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'schedule' | 'earnings' | 'profile'>('requests');
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [newAvatarUrl, setNewAvatarUrl] = useState('');
+  const [avatarSuccessMsg, setAvatarSuccessMsg] = useState('');
 
   if (!currentUser || currentUser.role !== 'tutor') return null;
 
@@ -37,6 +43,19 @@ export const TutorDashboardView: React.FC = () => {
   const totalNetEarnings = myTx.reduce((acc, t) => t.status === 'released_to_tutor' ? acc + t.tutorPayoutPula : acc, 0);
   const totalPendingEscrow = myTx.reduce((acc, t) => t.status === 'escrow_held' ? acc + t.tutorPayoutPula : acc, 0);
 
+  const handleSaveAvatar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isVerified) return;
+    if (newAvatarUrl.trim()) {
+      updateUserProfile(currentUser.id, { avatarUrl: newAvatarUrl.trim() });
+      setAvatarSuccessMsg('Profile picture updated successfully!');
+      setTimeout(() => {
+        setShowAvatarModal(false);
+        setAvatarSuccessMsg('');
+      }, 1500);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -48,7 +67,7 @@ export const TutorDashboardView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-amber-950">Tutor Profile Pending Admin Verification</h3>
               <p className="text-xs text-amber-900 mt-0.5">
-                Your credentials are under review by LearnLink Admin. Once approved, your Verified Badge will be activated and you can accept booking requests.
+                Your credentials and uploaded documents are under review by LearnLink Admin. Profile picture editing and session bookings will be enabled upon account approval.
               </p>
             </div>
           </div>
@@ -59,13 +78,32 @@ export const TutorDashboardView: React.FC = () => {
       )}
 
       {/* Header Banner */}
-      <div className="bg-[#022448] text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/10">
+      <div className="bg-[#022448] text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/10 relative">
         <div className="flex items-center gap-4">
-          <img
-            src={currentUser.avatarUrl}
-            alt={currentUser.fullName}
-            className="w-16 h-16 rounded-2xl object-cover border-2 border-[#feae2c]"
-          />
+          <div className="relative group">
+            <img
+              src={currentUser.avatarUrl}
+              alt={currentUser.fullName}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-[#feae2c]"
+            />
+            {isVerified ? (
+              <button
+                onClick={() => setShowAvatarModal(true)}
+                className="absolute -bottom-1 -right-1 p-1.5 bg-[#feae2c] text-[#022448] rounded-xl hover:bg-white transition-all shadow-md"
+                title="Change Profile Picture (Approved)"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <div
+                className="absolute -bottom-1 -right-1 p-1 bg-slate-700 text-slate-300 rounded-lg cursor-not-allowed"
+                title="Profile picture update locked until approval"
+              >
+                <Lock className="w-3 h-3" />
+              </div>
+            )}
+          </div>
+
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-bold">{currentUser.fullName}</h1>
@@ -75,24 +113,33 @@ export const TutorDashboardView: React.FC = () => {
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
-                  Unverified
+                  Unverified (Pending)
                 </span>
               )}
             </div>
             <p className="text-xs text-blue-200 mt-1">
-              {currentUser.university} • {currentUser.qualifications} • Rate: P{currentUser.hourlyRatePula}/hr
+              {currentUser.collegeOrUniversity || currentUser.university} • {currentUser.courseOrMajor || currentUser.qualifications} • Rate: P{currentUser.hourlyRatePula}/hr
             </p>
           </div>
         </div>
 
         <div className="flex gap-3">
-          <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 text-center min-w-[140px]">
-            <span className="text-2xl font-black text-[#feae2c]">P{totalNetEarnings.toFixed(0)}</span>
+          {isVerified && (
+            <button
+              onClick={() => setShowAvatarModal(true)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5"
+            >
+              <Camera className="w-4 h-4 text-[#feae2c]" /> Edit Profile Picture
+            </button>
+          )}
+
+          <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 text-center min-w-[130px]">
+            <span className="text-xl font-black text-[#feae2c]">P{totalNetEarnings.toFixed(0)}</span>
             <span className="text-[10px] text-blue-100 block">Net Paid (85%)</span>
           </div>
 
-          <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 text-center min-w-[140px]">
-            <span className="text-2xl font-black text-emerald-400">P{totalPendingEscrow.toFixed(0)}</span>
+          <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 text-center min-w-[130px]">
+            <span className="text-xl font-black text-emerald-400">P{totalPendingEscrow.toFixed(0)}</span>
             <span className="text-[10px] text-blue-100 block">Held in Escrow</span>
           </div>
         </div>
@@ -352,6 +399,90 @@ export const TutorDashboardView: React.FC = () => {
         )}
 
       </div>
+
+      {/* Edit Profile Picture Modal (Allowed only for approved tutors) */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl relative">
+            <button
+              onClick={() => setShowAvatarModal(false)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#022448] mx-auto flex items-center justify-center">
+                <Camera className="w-7 h-7" />
+              </div>
+              <h3 className="font-bold text-xl text-[#022448]">Update Profile Picture</h3>
+              <p className="text-xs text-slate-500">
+                As a verified tutor, you can update your headshot avatar image for student visibility.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveAvatar} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Image URL / Unsplash Link</label>
+                <input
+                  type="url"
+                  value={newAvatarUrl}
+                  onChange={e => setNewAvatarUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="w-full px-3 py-2.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#022448] outline-none"
+                  required
+                />
+              </div>
+
+              {/* Sample Avatar Selection Options */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-2">Or Choose a Preset Educator Avatar:</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+                    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250',
+                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+                    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250'
+                  ].map((url, idx) => (
+                    <img
+                      key={idx}
+                      src={url}
+                      alt={`Preset ${idx + 1}`}
+                      onClick={() => setNewAvatarUrl(url)}
+                      className={`w-14 h-14 rounded-2xl object-cover cursor-pointer border-2 transition-all ${
+                        newAvatarUrl === url ? 'border-[#feae2c] ring-2 ring-[#feae2c]/50 scale-105' : 'border-slate-200 hover:border-slate-400'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {avatarSuccessMsg && (
+                <div className="p-3 bg-emerald-50 text-emerald-800 text-xs rounded-xl border border-emerald-200 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{avatarSuccessMsg}</span>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarModal(false)}
+                  className="w-1/2 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#033466] shadow-md"
+                >
+                  Save Photo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

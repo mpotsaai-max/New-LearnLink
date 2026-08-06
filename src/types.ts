@@ -17,6 +17,9 @@ export interface UserProfile {
   bio?: string;
   qualifications?: string;
   university?: string;
+  courseOrMajor?: string;
+  collegeOrUniversity?: string;
+  yearsOfExperience?: string;
   subjects?: string[];
   academicLevels?: string[];
   location?: string;
@@ -28,6 +31,14 @@ export interface UserProfile {
   activeStudentsCount?: number;
   pendingRequestsCount?: number;
   verificationDocs?: string[];
+  resumeDocUrl?: string;
+  academicRecordDocUrl?: string;
+  omangIdDocUrl?: string;
+
+  // Student Specific Verification & Preferences
+  emailVerified?: boolean;
+  studentIdDocUrl?: string;
+  preferredPaymentMethod?: PaymentMethod | 'BankEFT' | '';
 }
 
 export interface TutorPackage {

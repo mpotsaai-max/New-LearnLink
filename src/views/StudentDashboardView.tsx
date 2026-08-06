@@ -10,11 +10,17 @@ import {
   RefreshCw,
   Search,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  UserCheck,
+  CreditCard,
+  FileText,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { RatingModal } from '../components/RatingModal';
+import { PaymentMethod } from '../types';
 
 interface StudentDashboardViewProps {
   onNavigate: (tab: string) => void;
@@ -22,10 +28,10 @@ interface StudentDashboardViewProps {
 }
 
 export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNavigate, onSelectTutor }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, updateUserProfile } = useAuth();
   const { sessions, transactions, rescheduleSession, setActiveChatUser, setActiveDailySession } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'escrow_transactions'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'escrow_transactions' | 'settings'>('upcoming');
   const [selectedRatingSession, setSelectedRatingSession] = useState<{
     id: string;
     tutorId: string;
@@ -37,6 +43,13 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNa
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('15:00 - 16:30');
 
+  // Student Settings Form State
+  const [studentIdFile, setStudentIdFile] = useState(currentUser?.studentIdDocUrl || '');
+  const [preferredPayMethod, setPreferredPayMethod] = useState<PaymentMethod>(
+    currentUser?.preferredPaymentMethod || 'OrangeMoney'
+  );
+  const [settingsSavedMsg, setSettingsSavedMsg] = useState('');
+
   if (!currentUser) return null;
 
   const mySessions = sessions.filter(s => s.studentId === currentUser.id);
@@ -45,6 +58,20 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNa
 
   const myTransactions = transactions.filter(t => t.studentId === currentUser.id);
   const totalEscrowPula = myTransactions.reduce((acc, t) => t.status === 'escrow_held' ? acc + t.amountPula : acc, 0);
+
+  const handleSaveStudentSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentIdFile.trim()) {
+      alert('Please attach your National Omang / Student ID PDF or image file.');
+      return;
+    }
+    updateUserProfile(currentUser.id, {
+      studentIdDocUrl: studentIdFile.trim(),
+      preferredPaymentMethod: preferredPayMethod
+    });
+    setSettingsSavedMsg('Student verification prerequisites updated successfully!');
+    setTimeout(() => setSettingsSavedMsg(''), 3000);
+  };
 
   const handleRescheduleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +191,17 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNa
             }`}
           >
             <ShieldCheck className="w-4 h-4 text-emerald-600" /> Escrow Payment History ({myTransactions.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`pb-3 transition-all border-b-2 flex items-center gap-2 ${
+              activeTab === 'settings'
+                ? 'border-[#022448] text-[#022448]'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 text-[#feae2c]" /> Verification & Payment Settings
           </button>
         </div>
 
@@ -353,6 +391,90 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({ onNa
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Tab 4: Student Verification & Payment Settings */}
+        {activeTab === 'settings' && (
+          <form onSubmit={handleSaveStudentSettings} className="max-w-2xl space-y-6">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-3 text-xs text-blue-900">
+              <ShieldCheck className="w-5 h-5 text-[#022448] shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-bold">Student Verification Requirements:</strong> Before booking tutoring sessions, LearnLink requires students to upload a valid Student ID or Omang National ID document and select a preferred Mobile Money gateway for escrow payouts and refunds.
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Upload Student ID or National Omang (PDF / Image) <span className="text-red-500">*</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  This document verifies your student identity for safety across all online/in-person sessions.
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => {
+                      const fname = e.target.files?.[0]?.name || 'Student_Omang_ID.pdf';
+                      setStudentIdFile(fname);
+                    }}
+                    className="text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#022448] file:text-white cursor-pointer"
+                  />
+                  {studentIdFile && (
+                    <span className="text-xs font-mono bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl border border-emerald-300 font-semibold flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5" /> {studentIdFile}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Preferred Payment Gateway <span className="text-red-500">*</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Select your default mobile money provider for fast 1-click escrow checkout.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'OrangeMoney', label: 'OrangeMoney', sub: 'Orange Botswana' },
+                    { id: 'Smega', label: 'Smega', sub: 'BTC Mobile' },
+                    { id: 'MyZaka', label: 'MyZaka', sub: 'Mascom Wireless' }
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPreferredPayMethod(p.id as PaymentMethod)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                        preferredPayMethod === p.id
+                          ? 'bg-[#022448] text-white border-[#022448] shadow-md'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4 mb-1 text-[#feae2c]" />
+                      <div className="font-bold text-xs">{p.label}</div>
+                      <div className="text-[10px] opacity-75">{p.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {settingsSavedMsg && (
+              <div className="p-3 bg-emerald-50 text-emerald-800 text-xs rounded-xl border border-emerald-200 font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {settingsSavedMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="px-6 py-3 bg-[#022448] text-white font-bold text-xs rounded-xl shadow-md hover:bg-[#1e3a5f] transition-all"
+            >
+              Save Verification & Payment Details
+            </button>
+          </form>
         )}
 
       </div>
