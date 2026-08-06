@@ -1,0 +1,6 @@
+{
+  "name": "LearnLink",
+  "description": "Botswana's premier tutoring network connecting students with expert verified tutors with escrow mobile payments (OrangeMoney, Smega, MyZaka), direct messaging, and session management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

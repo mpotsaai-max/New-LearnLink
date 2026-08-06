@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #022448;
+    --primary-container: #1e3a5f;
+    --on-primary-container: #8aa4cf;
+    --secondary-container: #feae2c;
+    --on-secondary-container: #6b4500;
+    --background: #f8fafc;
+    --surface-white: #ffffff;
+    --call-active: #E96645;
+    --border-color: #e2e8f0;
+  }
+
+  body {
+    background-color: var(--background);
+    color: #1e293b;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Professional Polish Custom Utilities */
+.shadow-level-1 {
+  box-shadow: 0px 4px 14px rgba(2, 36, 72, 0.05);
+}
+
+.shadow-level-2 {
+  box-shadow: 0px 10px 30px rgba(2, 36, 72, 0.09);
+}
+
+.shadow-level-3 {
+  box-shadow: 0px 20px 40px rgba(2, 36, 72, 0.14);
+}
+
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 12px 28px rgba(2, 36, 72, 0.12);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Material symbols & animation support */
+@keyframes pulse-call {
+  0% { box-shadow: 0 0 0 0 rgba(233, 102, 69, 0.4); }
+  70% { box-shadow: 0 0 0 12px rgba(233, 102, 69, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(233, 102, 69, 0); }
+}
+
+.pulse-btn {
+  animation: pulse-call 2s infinite;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
