@@ -50,10 +50,14 @@ export const DailyClassroomModal: React.FC<DailyClassroomModalProps> = ({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(3600); // 60 mins in seconds
 
-  const roomName = `learnlink-${sessionData.sessionId.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-  const dailyRoomUrl = sessionData.videoCallUrl && sessionData.videoCallUrl.includes('daily.co')
+  const roomSlug = sessionData.sessionId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const defaultJitsiUrl = `https://meet.jit.si/LearnLink_Classroom_${roomSlug}#config.prejoinPageEnabled=false&config.disableDeepLinking=true`;
+  
+  const dailyRoomUrl = (sessionData.videoCallUrl && sessionData.videoCallUrl.includes('http'))
     ? sessionData.videoCallUrl
-    : `https://${customRoomDomain}/${roomName}`;
+    : defaultJitsiUrl;
+
+  const [activeEngine, setActiveEngine] = useState<'jitsi' | 'camera_studio'>('jitsi');
 
   // Session timer countdown
   useEffect(() => {
@@ -157,27 +161,27 @@ export const DailyClassroomModal: React.FC<DailyClassroomModalProps> = ({
           {/* Main Video Viewport */}
           <div className="flex-1 bg-[#020e1a] flex flex-col relative overflow-hidden">
             
-            {/* Embedded Daily Room Iframe */}
+            {/* Embedded WebRTC Classroom Iframe */}
             <div className="flex-1 w-full h-full relative bg-slate-950">
               <iframe
-                src={`${dailyRoomUrl}?callWithChat=true&callWithDevicesMin=true`}
-                allow="camera; microphone; fullscreen; speaker; display-capture"
+                src={dailyRoomUrl}
+                allow="camera; microphone; fullscreen; speaker; display-capture; autoplay; clipboard-write"
                 className="w-full h-full border-0"
-                title="Daily.co Virtual Classroom"
+                title="LearnLink WebRTC Virtual Classroom"
               />
 
-              {/* Overlay Banner if iframe is blocked or loading preview */}
-              <div className="absolute top-3 left-3 pointer-events-none bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/60 flex items-center gap-2 text-xs text-slate-200">
+              {/* Overlay Banner */}
+              <div className="absolute top-3 left-3 pointer-events-none bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/60 flex items-center gap-2 text-xs text-slate-200 shadow-lg">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Daily.co Encrypted HD WebRTC</span>
+                <span>Encrypted HD WebRTC Live Stream</span>
               </div>
             </div>
 
             {/* Bottom Controls Bar */}
             <div className="bg-[#021830] px-4 py-2.5 border-t border-blue-900/60 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-xs text-blue-300">
-                <span className="font-semibold text-white">Daily Room:</span>
-                <span className="font-mono bg-blue-950 px-2 py-0.5 rounded border border-blue-800/60 text-blue-200">{dailyRoomUrl}</span>
+                <span className="font-semibold text-white">Classroom Room URL:</span>
+                <span className="font-mono bg-blue-950 px-2 py-0.5 rounded border border-blue-800/60 text-blue-200 text-[11px] truncate max-w-[280px] sm:max-w-md">{dailyRoomUrl}</span>
               </div>
 
               <div className="flex items-center gap-2">

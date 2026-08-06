@@ -1,11 +1,19 @@
 import React from 'react';
-import { X, Mail, CheckCircle2, ShieldCheck, Clock, ExternalLink } from 'lucide-react';
+import { X, Mail, ShieldCheck, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 export const EmailNotificationDrawer: React.FC = () => {
   const { emails, isEmailDrawerOpen, setIsEmailDrawerOpen } = useApp();
+  const { currentUser } = useAuth();
 
   if (!isEmailDrawerOpen) return null;
+
+  const visibleEmails = !currentUser
+    ? []
+    : currentUser.role === 'admin'
+    ? emails
+    : emails.filter(e => e.recipientEmail.toLowerCase() === currentUser.email.toLowerCase());
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end">
@@ -19,7 +27,9 @@ export const EmailNotificationDrawer: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-base">Automated Email Notifications</h3>
-              <p className="text-xs text-blue-200">System generated email dispatch logs</p>
+              <p className="text-xs text-blue-200">
+                {currentUser ? `Inbox for ${currentUser.fullName}` : 'System Email Dispatch Logs'}
+              </p>
             </div>
           </div>
           <button
@@ -38,12 +48,16 @@ export const EmailNotificationDrawer: React.FC = () => {
 
         {/* Email Logs List */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 divide-y divide-slate-100">
-          {emails.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-xs">
-              No simulated emails dispatched yet.
+          {visibleEmails.length === 0 ? (
+            <div className="text-center py-16 px-4 text-slate-400 space-y-2">
+              <Mail className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="font-semibold text-xs text-slate-600">Your Mailbox is Empty</p>
+              <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                No automated emails logged yet for {currentUser?.email || 'this account'}. Booking receipts and updates will appear here automatically.
+              </p>
             </div>
           ) : (
-            emails.map(email => (
+            visibleEmails.map(email => (
               <div key={email.id} className="pt-4 first:pt-0">
                 <div className="flex items-start justify-between mb-2">
                   <div className="space-y-0.5">
@@ -67,7 +81,7 @@ export const EmailNotificationDrawer: React.FC = () => {
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 text-center text-xs text-slate-500 flex items-center justify-between">
-          <span>{emails.length} total emails logged</span>
+          <span>{visibleEmails.length} email{visibleEmails.length !== 1 ? 's' : ''} logged</span>
           <button
             onClick={() => setIsEmailDrawerOpen(false)}
             className="px-4 py-1.5 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#1e3a5f]"

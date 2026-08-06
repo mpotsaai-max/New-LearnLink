@@ -4,22 +4,31 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 
 export const ChatModal: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, users } = useAuth();
   const { activeChatUser, setActiveChatUser, chats, messages, sendMessage, getOrCreateChat, markChatAsRead } = useApp();
 
   const [inputMsg, setInputMsg] = useState('');
+  const [showPartnerList, setShowPartnerList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   if (!activeChatUser || !currentUser) return null;
 
-  const isStudent = currentUser.role === 'student';
-  const studentId = isStudent ? currentUser.id : activeChatUser.id;
-  const tutorId = isStudent ? activeChatUser.id : currentUser.id;
-  const studentName = isStudent ? currentUser.fullName : activeChatUser.name;
-  const tutorName = isStudent ? activeChatUser.name : currentUser.fullName;
-
-  const chat = getOrCreateChat(studentId, tutorId, studentName, tutorName, currentUser.avatarUrl, activeChatUser.avatar);
+  const chat = getOrCreateChat(
+    currentUser.id,
+    activeChatUser.id,
+    currentUser.fullName,
+    activeChatUser.name,
+    currentUser.avatarUrl,
+    activeChatUser.avatar
+  );
   const chatMessages = messages.filter(m => m.chatId === chat.id);
+
+  // Available contacts list for switching
+  const myChats = chats.filter(c => c.studentId === currentUser.id || c.tutorId === currentUser.id);
+  const myPartnerIds = new Set(myChats.map(c => c.studentId === currentUser.id ? c.tutorId : c.studentId));
+  
+  // Available system partners
+  const availablePartners = users.filter(u => u.id !== currentUser.id && (myPartnerIds.has(u.id) || u.role === 'admin' || u.isVerifiedTutor));
 
   useEffect(() => {
     markChatAsRead(chat.id);

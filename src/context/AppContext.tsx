@@ -398,7 +398,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentMethod: bookingData.paymentMethod,
       escrowStatus: 'escrow_held',
       meetingMode: bookingData.meetingMode,
-      videoCallUrl: bookingData.meetingMode === 'Online' ? `https://learnlink.daily.co/${sessionId}` : undefined,
+      videoCallUrl: bookingData.meetingMode === 'Online' ? `https://meet.jit.si/LearnLink_Classroom_${sessionId}#config.prejoinPageEnabled=false&config.disableDeepLinking=true` : undefined,
       locationStr: bookingData.meetingMode === 'In-person' ? 'To be agreed with tutor' : undefined,
       notes: bookingData.notes,
       createdAt: new Date().toISOString().slice(0, 10)
@@ -640,7 +640,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     studentAvatar?: string,
     tutorAvatar?: string
   ) => {
-    let existing = chats.find(c => c.studentId === studentId && c.tutorId === tutorId);
+    let existing = chats.find(c => 
+      (c.studentId === studentId && c.tutorId === tutorId) ||
+      (c.studentId === tutorId && c.tutorId === studentId)
+    );
     if (!existing) {
       existing = {
         id: `chat_${Date.now()}`,

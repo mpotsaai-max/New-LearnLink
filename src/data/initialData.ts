@@ -207,7 +207,7 @@ export const INITIAL_SESSIONS: BookingSession[] = [
     paymentMethod: 'OrangeMoney',
     escrowStatus: 'escrow_held',
     meetingMode: 'Online',
-    videoCallUrl: 'https://learnlink.daily.co/ses-101-puremaths',
+    videoCallUrl: 'https://meet.jit.si/LearnLink_Classroom_ses101_puremaths#config.prejoinPageEnabled=false&config.disableDeepLinking=true',
     notes: 'Focus on Calculus Integration by parts and Trigonometric Identities past papers.',
     createdAt: '2026-08-05'
   },
@@ -230,7 +230,7 @@ export const INITIAL_SESSIONS: BookingSession[] = [
     paymentMethod: 'Smega',
     escrowStatus: 'escrow_held',
     meetingMode: 'Online',
-    videoCallUrl: 'https://learnlink.daily.co/ses-102-python',
+    videoCallUrl: 'https://meet.jit.si/LearnLink_Classroom_ses102_python#config.prejoinPageEnabled=false&config.disableDeepLinking=true',
     notes: 'Introduction to Data Structures, Arrays and Hash Maps in Python.',
     createdAt: '2026-08-06'
   },

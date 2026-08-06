@@ -28,7 +28,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpenAuthModal }) => {
   const { currentUser, logout, switchDemoUser } = useAuth();
-  const { notifications, emails, markNotifAsRead, setIsEmailDrawerOpen, setIsShortcutsModalOpen, setActiveChatUser } = useApp();
+  const { chats, sessions, notifications, emails, markNotifAsRead, setIsEmailDrawerOpen, setIsShortcutsModalOpen, setActiveChatUser } = useApp();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -39,7 +39,33 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
     ? notifications.filter(n => n.userId === currentUser.id)
     : [];
   const unreadNotifs = userNotifications.filter(n => !n.isRead);
-  const totalEmails = currentUser ? emails.filter(e => e.recipientEmail === currentUser.email || currentUser.role === 'admin').length : emails.length;
+  const totalEmails = currentUser
+    ? (currentUser.role === 'admin'
+        ? emails.length
+        : emails.filter(e => e.recipientEmail.toLowerCase() === currentUser.email.toLowerCase()).length)
+    : 0;
+
+  const handleOpenMessages = () => {
+    if (!currentUser) return;
+    const myChats = chats.filter(c => c.studentId === currentUser.id || c.tutorId === currentUser.id);
+    if (myChats.length > 0) {
+      const lastChat = myChats[0];
+      const partnerId = lastChat.studentId === currentUser.id ? lastChat.tutorId : lastChat.studentId;
+      const partnerName = lastChat.studentId === currentUser.id ? lastChat.tutorName : lastChat.studentName;
+      const partnerAvatar = lastChat.studentId === currentUser.id ? lastChat.tutorAvatar : lastChat.studentAvatar;
+      setActiveChatUser({ id: partnerId, name: partnerName, avatar: partnerAvatar });
+    } else {
+      if (currentUser.role === 'admin') {
+        setActiveChatUser({ id: 'usr_student_demo', name: 'Thabo Mokgosi (Student Demo)' });
+      } else {
+        setActiveChatUser({
+          id: 'usr_admin_demo',
+          name: 'LearnLink Support',
+          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200'
+        });
+      }
+    }
+  };
 
   const handleNavClick = (tab: string) => {
     setCurrentTab(tab);
@@ -137,12 +163,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
 
                 {/* Direct Messages Icon */}
                 <button
-                  onClick={() => {
-                    setActiveChatUser(currentUser.role === 'tutor' 
-                      ? { id: 'usr_student_demo', name: 'Thabo Mokgosi', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' }
-                      : { id: 'usr_tutor_1', name: 'Neo Modise', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' }
-                    );
-                  }}
+                  onClick={handleOpenMessages}
                   className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
                   title="Direct Messages"
                 >
