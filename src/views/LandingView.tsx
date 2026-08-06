@@ -101,7 +101,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onNavigate, onSelectTu
                 </div>
                 <div className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-blue-300" />
-                  <span>Verified UB & BIUST Tutors</span>
+                  <span>Verified Tutors</span>
                 </div>
               </div>
 

@@ -109,7 +109,7 @@ export const TutorDirectoryView: React.FC<TutorDirectoryViewProps> = ({ onSelect
           </span>
           <h1 className="text-3xl font-extrabold mt-2">Find Your Perfect Verified Tutor</h1>
           <p className="text-xs text-blue-200 mt-1 max-w-xl">
-            Browse top vetted educators from UB, BIUST, and BAC. Filter by subject, level, location, and rate.
+            Browse top vetted educators across Botswana. Filter by subject, level, location, and rate.
           </p>
         </div>
 

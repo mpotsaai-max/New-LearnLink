@@ -310,7 +310,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
                   type="text"
                   value={university}
                   onChange={e => setUniversity(e.target.value)}
-                  placeholder="e.g. University of Botswana / BIUST"
+                  placeholder="e.g. UB, BIUST, BAC, Botho, Limkokwing"
                   className="w-full p-2 text-xs border border-slate-200 rounded-lg bg-white"
                 />
               </div>
