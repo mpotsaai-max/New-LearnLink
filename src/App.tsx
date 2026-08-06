@@ -87,7 +87,10 @@ export const AppContent: React.FC = () => {
       </main>
 
       {/* Global Footer */}
-      <Footer />
+      <Footer
+        onNavigate={setCurrentTab}
+        onOpenAuthModal={handleOpenAuth}
+      />
 
       {/* Overlays & Drawers */}
       <KeyboardShortcutsModal onNavigate={setCurrentTab} />
