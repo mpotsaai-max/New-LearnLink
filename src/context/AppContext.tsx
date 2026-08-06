@@ -22,6 +22,8 @@ import {
   INITIAL_EMAILS
 } from '../data/initialData';
 import { useAuth } from './AuthContext';
+import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface AppContextType {
   sessions: BookingSession[];
@@ -177,7 +179,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     pricePula?: number;
   } | null>(null);
 
-  // Persistence Effects
+  // Persistence Effects (Local Backup + Firestore Cloud Real-Time Sync)
   useEffect(() => { localStorage.setItem('learnlink_sessions', JSON.stringify(sessions)); }, [sessions]);
   useEffect(() => { localStorage.setItem('learnlink_transactions', JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem('learnlink_notifications', JSON.stringify(notifications)); }, [notifications]);
@@ -185,6 +187,140 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { localStorage.setItem('learnlink_messages', JSON.stringify(messages)); }, [messages]);
   useEffect(() => { localStorage.setItem('learnlink_reviews', JSON.stringify(reviews)); }, [reviews]);
   useEffect(() => { localStorage.setItem('learnlink_emails', JSON.stringify(emails)); }, [emails]);
+
+  // Firestore Cloud Synchronization Effects
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'sessions'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: BookingSession[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as BookingSession));
+          setSessions(prev => {
+            const map = new Map<string, BookingSession>();
+            INITIAL_SESSIONS.forEach(s => map.set(s.id, s));
+            prev.forEach(s => map.set(s.id, s));
+            remote.forEach(s => map.set(s.id, s));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore sessions listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'transactions'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: PaymentTransaction[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as PaymentTransaction));
+          setTransactions(prev => {
+            const map = new Map<string, PaymentTransaction>();
+            INITIAL_TRANSACTIONS.forEach(t => map.set(t.id, t));
+            prev.forEach(t => map.set(t.id, t));
+            remote.forEach(t => map.set(t.id, t));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore transactions listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'notifications'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: NotificationItem[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as NotificationItem));
+          setNotifications(prev => {
+            const map = new Map<string, NotificationItem>();
+            INITIAL_NOTIFICATIONS.forEach(n => map.set(n.id, n));
+            prev.forEach(n => map.set(n.id, n));
+            remote.forEach(n => map.set(n.id, n));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore notifications listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'chats'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: ChatThread[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as ChatThread));
+          setChats(prev => {
+            const map = new Map<string, ChatThread>();
+            INITIAL_CHATS.forEach(c => map.set(c.id, c));
+            prev.forEach(c => map.set(c.id, c));
+            remote.forEach(c => map.set(c.id, c));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore chats listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'messages'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: ChatMessage[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as ChatMessage));
+          setMessages(prev => {
+            const map = new Map<string, ChatMessage>();
+            INITIAL_MESSAGES.forEach(m => map.set(m.id, m));
+            prev.forEach(m => map.set(m.id, m));
+            remote.forEach(m => map.set(m.id, m));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore messages listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'reviews'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: ReviewItem[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as ReviewItem));
+          setReviews(prev => {
+            const map = new Map<string, ReviewItem>();
+            INITIAL_REVIEWS.forEach(r => map.set(r.id, r));
+            prev.forEach(r => map.set(r.id, r));
+            remote.forEach(r => map.set(r.id, r));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore reviews listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'emails'), snapshot => {
+        if (!snapshot.empty) {
+          const remote: SimulatedEmail[] = [];
+          snapshot.forEach(docSnap => remote.push(docSnap.data() as SimulatedEmail));
+          setEmails(prev => {
+            const map = new Map<string, SimulatedEmail>();
+            INITIAL_EMAILS.forEach(em => map.set(em.id, em));
+            prev.forEach(em => map.set(em.id, em));
+            remote.forEach(em => map.set(em.id, em));
+            return Array.from(map.values());
+          });
+        }
+      }, err => console.warn('Firestore emails listener notice:', err));
+      return () => unsub();
+    } catch (e) { console.warn('Firestore init notice:', e); }
+  }, []);
 
   const addSimulatedEmail = (recipientEmail: string, recipientName: string, subject: string, body: string, triggerEvent: string) => {
     const newEmail: SimulatedEmail = {
@@ -197,6 +333,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       triggerEvent
     };
     setEmails(prev => [newEmail, ...prev]);
+    try {
+      setDoc(doc(db, 'emails', newEmail.id), newEmail).catch(err => console.warn('Firestore email notice:', err));
+    } catch (e) { console.warn('Firestore write notice:', e); }
   };
 
   const addNotification = (userId: string, title: string, message: string, type: NotificationItem['type']) => {
@@ -210,6 +349,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isRead: false
     };
     setNotifications(prev => [notif, ...prev]);
+    try {
+      setDoc(doc(db, 'notifications', notif.id), notif).catch(err => console.warn('Firestore notif notice:', err));
+    } catch (e) { console.warn('Firestore write notice:', e); }
   };
 
   const createBooking = (bookingData: {
@@ -282,6 +424,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSessions(prev => [newSession, ...prev]);
     setTransactions(prev => [newTx, ...prev]);
 
+    try {
+      setDoc(doc(db, 'sessions', sessionId), newSession).catch(e => console.warn('Firestore session write:', e));
+      setDoc(doc(db, 'transactions', txId), newTx).catch(e => console.warn('Firestore tx write:', e));
+    } catch (e) { console.warn('Firestore write notice:', e); }
+
     // Student Notification & Email
     addNotification(
       currentUser.id,
@@ -315,6 +462,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (s.id !== sessionId) return s;
         const updated = { ...s, status: newStatus };
 
+        try {
+          setDoc(doc(db, 'sessions', sessionId), updated, { merge: true }).catch(e => console.warn('Firestore session update:', e));
+        } catch (e) { console.warn('Firestore notice:', e); }
+
         // Send notifications
         if (newStatus === 'accepted') {
           addNotification(
@@ -338,7 +489,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             'booking'
           );
           // Mark transaction as refunded
-          setTransactions(txs => txs.map(t => t.sessionId === sessionId ? { ...t, status: 'refunded' } : t));
+          setTransactions(txs => txs.map(t => {
+            if (t.sessionId === sessionId) {
+              const updatedTx = { ...t, status: 'refunded' as const };
+              try { setDoc(doc(db, 'transactions', t.id), updatedTx, { merge: true }).catch(err => console.warn('Firestore tx refund:', err)); } catch (e) { console.warn('Firestore refund notice:', e); }
+              return updatedTx;
+            }
+            return t;
+          }));
           addSimulatedEmail(
             s.studentEmail,
             s.studentName,
@@ -358,6 +516,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map(s => {
         if (s.id !== sessionId) return s;
         const updated = { ...s, date: newDate, time: newTime, status: 'accepted' as SessionStatus };
+        try {
+          setDoc(doc(db, 'sessions', sessionId), updated, { merge: true }).catch(e => console.warn('Firestore session reschedule:', e));
+        } catch (e) { console.warn('Firestore notice:', e); }
+
         addNotification(
           s.tutorId,
           'Session Rescheduled',
@@ -379,17 +541,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
 
-    // Update Session
+    const updatedSession = { ...session, status: 'completed' as const, escrowStatus: 'released_to_tutor' as const };
     setSessions(prev =>
-      prev.map(s => (s.id === sessionId ? { ...s, status: 'completed', escrowStatus: 'released_to_tutor' } : s))
+      prev.map(s => (s.id === sessionId ? updatedSession : s))
     );
+    try { setDoc(doc(db, 'sessions', sessionId), updatedSession, { merge: true }).catch(e => console.warn('Firestore session complete:', e)); } catch (e) { console.warn('Firestore notice:', e); }
 
     // Update Transaction
     const tx = transactions.find(t => t.sessionId === sessionId);
     if (tx) {
+      const updatedTx = { ...tx, status: 'released_to_tutor' as const };
       setTransactions(prev =>
-        prev.map(t => (t.sessionId === sessionId ? { ...t, status: 'released_to_tutor' } : t))
+        prev.map(t => (t.sessionId === sessionId ? updatedTx : t))
       );
+      try { setDoc(doc(db, 'transactions', tx.id), updatedTx, { merge: true }).catch(e => console.warn('Firestore tx complete:', e)); } catch (e) { console.warn('Firestore notice:', e); }
 
       // Add earnings to tutor profile
       updateUserProfile(session.tutorId, {
@@ -437,9 +602,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setReviews(prev => [newRev, ...prev]);
+    try { setDoc(doc(db, 'reviews', newRev.id), newRev).catch(e => console.warn('Firestore review write:', e)); } catch (e) { console.warn('Firestore notice:', e); }
 
     // Update session record
-    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ratingGiven: rating, reviewGiven: comment } : s));
+    setSessions(prev => prev.map(s => {
+      if (s.id === sessionId) {
+        const updated = { ...s, ratingGiven: rating, reviewGiven: comment };
+        try { setDoc(doc(db, 'sessions', sessionId), updated, { merge: true }).catch(e => console.warn('Firestore session review update:', e)); } catch (e) { console.warn('Firestore notice:', e); }
+        return updated;
+      }
+      return s;
+    }));
 
     // Recalculate tutor rating & review count
     const tutorRevs = [...reviews.filter(r => r.tutorId === tutorId), newRev];
@@ -482,6 +655,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unreadCount: 0
       };
       setChats(prev => [existing!, ...prev]);
+      try { setDoc(doc(db, 'chats', existing.id), existing).catch(e => console.warn('Firestore chat write:', e)); } catch (e) { console.warn('Firestore notice:', e); }
     }
     return existing;
   };
@@ -505,19 +679,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setMessages(prev => [...prev, newMsg]);
+    try { setDoc(doc(db, 'messages', newMsg.id), newMsg).catch(e => console.warn('Firestore message write:', e)); } catch (e) { console.warn('Firestore notice:', e); }
 
-    setChats(prev =>
-      prev.map(c =>
-        c.id === chatId
-          ? {
-              ...c,
-              lastMessage: content,
-              lastMessageTime: 'Just now',
-              unreadCount: c.unreadCount + 1
-            }
-          : c
-      )
-    );
+    const updatedChat = {
+      ...chat,
+      lastMessage: content,
+      lastMessageTime: 'Just now',
+      unreadCount: chat.unreadCount + 1
+    };
+    setChats(prev => prev.map(c => c.id === chatId ? updatedChat : c));
+    try { setDoc(doc(db, 'chats', chatId), updatedChat, { merge: true }).catch(e => console.warn('Firestore chat update:', e)); } catch (e) { console.warn('Firestore notice:', e); }
 
     addNotification(
       recipientId,
@@ -528,12 +699,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markChatAsRead = (chatId: string) => {
-    setChats(prev => prev.map(c => c.id === chatId ? { ...c, unreadCount: 0 } : c));
-    setMessages(prev => prev.map(m => m.chatId === chatId ? { ...m, isRead: true } : m));
+    setChats(prev => prev.map(c => {
+      if (c.id === chatId) {
+        const updated = { ...c, unreadCount: 0 };
+        try { setDoc(doc(db, 'chats', chatId), updated, { merge: true }).catch(e => console.warn('Firestore chat mark read:', e)); } catch (e) { console.warn('Firestore notice:', e); }
+        return updated;
+      }
+      return c;
+    }));
+    setMessages(prev => prev.map(m => {
+      if (m.chatId === chatId) {
+        const updated = { ...m, isRead: true };
+        try { setDoc(doc(db, 'messages', m.id), updated, { merge: true }).catch(e => console.warn('Firestore msg mark read:', e)); } catch (e) { console.warn('Firestore notice:', e); }
+        return updated;
+      }
+      return m;
+    }));
   };
 
   const markNotifAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setNotifications(prev => prev.map(n => {
+      if (n.id === id) {
+        const updated = { ...n, isRead: true };
+        try { setDoc(doc(db, 'notifications', id), updated, { merge: true }).catch(e => console.warn('Firestore notif mark read:', e)); } catch (e) { console.warn('Firestore notice:', e); }
+        return updated;
+      }
+      return n;
+    }));
   };
 
   const clearAllNotifs = () => {
