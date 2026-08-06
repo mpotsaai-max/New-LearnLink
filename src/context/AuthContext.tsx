@@ -35,22 +35,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    // Reset legacy saved sessions once so everyone gets the clean public visitor view by default
-    if (!localStorage.getItem('learnlink_guest_default_v3')) {
-      localStorage.removeItem('learnlink_current_user');
-      localStorage.setItem('learnlink_guest_default_v3', 'true');
-      return null;
-    }
-
+    // Standard public visitor default: null (Guest)
+    const savedLoggedIn = localStorage.getItem('learnlink_is_logged_in');
     const savedCurrent = localStorage.getItem('learnlink_current_user');
-    if (savedCurrent) {
+    if (savedLoggedIn === 'true' && savedCurrent) {
       try {
         return JSON.parse(savedCurrent);
       } catch {
         return null;
       }
     }
-    // Default to Guest Visitor for clean public experience
+    // Clean default: public visitor
     return null;
   });
 
@@ -61,8 +56,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('learnlink_current_user', JSON.stringify(currentUser));
+      localStorage.setItem('learnlink_is_logged_in', 'true');
     } else {
       localStorage.removeItem('learnlink_current_user');
+      localStorage.removeItem('learnlink_is_logged_in');
     }
   }, [currentUser]);
 
