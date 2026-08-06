@@ -35,8 +35,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const unreadNotifs = notifications.filter(n => !n.isRead && (!currentUser || n.userId === currentUser.id));
-  const totalEmails = emails.length;
+  const userNotifications = currentUser
+    ? notifications.filter(n => n.userId === currentUser.id)
+    : [];
+  const unreadNotifs = userNotifications.filter(n => !n.isRead);
+  const totalEmails = currentUser ? emails.filter(e => e.recipientEmail === currentUser.email || currentUser.role === 'admin').length : emails.length;
 
   const handleNavClick = (tab: string) => {
     setCurrentTab(tab);
@@ -106,48 +109,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
           {/* Right Action Icons & Auth */}
           <div className="flex items-center gap-3">
             
-            {/* Quick Demo Role Switcher Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-                className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-blue-900/60 hover:bg-blue-900 text-xs text-blue-200 border border-blue-400/30 rounded-lg transition-all"
-                title="Switch role view for demo review"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#feae2c]" />
-                <span>Demo Role: <strong className="text-white capitalize">{currentUser ? currentUser.role : 'Guest'}</strong></span>
-                <ChevronDown className="w-3.5 h-3.5 text-blue-300" />
-              </button>
-
-              {isRoleMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-[#1e3a5f] border border-blue-400/30 rounded-xl shadow-xl py-2 z-50 text-xs">
-                  <div className="px-3 py-1 text-blue-300 font-semibold border-b border-white/10 mb-1">
-                    Switch Active Persona:
-                  </div>
-                  <button
-                    onClick={() => { switchDemoUser('student'); setCurrentTab('student_dashboard'); setIsRoleMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-white/10 text-white flex items-center justify-between"
-                  >
-                    <span>🎓 Student (Thabo M.)</span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded">Active</span>
-                  </button>
-                  <button
-                    onClick={() => { switchDemoUser('tutor'); setCurrentTab('tutor_dashboard'); setIsRoleMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-white/10 text-white flex items-center justify-between"
-                  >
-                    <span>👨‍🏫 Tutor (Neo Modise)</span>
-                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">Verified</span>
-                  </button>
-                  <button
-                    onClick={() => { switchDemoUser('admin'); setCurrentTab('admin_dashboard'); setIsRoleMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-white/10 text-white flex items-center justify-between"
-                  >
-                    <span>🛡️ System Admin</span>
-                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">Control</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Keyboard Shortcuts Trigger */}
             <button
               onClick={() => setIsShortcutsModalOpen(true)}
@@ -157,77 +118,87 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               <Command className="w-4 h-4" />
             </button>
 
-            {/* Email Notification Drawer Icon */}
-            <button
-              onClick={() => setIsEmailDrawerOpen(true)}
-              className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
-              title="Automated System Email Logs"
-            >
-              <Mail className="w-5 h-5" />
-              {totalEmails > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-amber-500 text-[#022448] font-bold text-[10px] rounded-full flex items-center justify-center">
-                  {totalEmails}
-                </span>
-              )}
-            </button>
-
-            {/* Direct Messages Icon */}
+            {/* Logged-in User Header Actions: Email, Chat, Notifications */}
             {currentUser && (
-              <button
-                onClick={() => setActiveChatUser({ id: 'usr_tutor_1', name: 'Neo Modise', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' })}
-                className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
-                title="Direct Messages"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </button>
-            )}
+              <>
+                {/* Email Notification Drawer Icon */}
+                <button
+                  onClick={() => setIsEmailDrawerOpen(true)}
+                  className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
+                  title="Automated System Email Logs"
+                >
+                  <Mail className="w-5 h-5" />
+                  {totalEmails > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-amber-500 text-[#022448] font-bold text-[10px] rounded-full flex items-center justify-center">
+                      {totalEmails}
+                    </span>
+                  )}
+                </button>
 
-            {/* Notifications Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadNotifs.length > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-[#e96645] text-white font-bold text-[10px] rounded-full flex items-center justify-center animate-pulse">
-                    {unreadNotifs.length}
-                  </span>
-                )}
-              </button>
+                {/* Direct Messages Icon */}
+                <button
+                  onClick={() => {
+                    setActiveChatUser(currentUser.role === 'tutor' 
+                      ? { id: 'usr_student_demo', name: 'Thabo Mokgosi', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' }
+                      : { id: 'usr_tutor_1', name: 'Neo Modise', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' }
+                    );
+                  }}
+                  className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
+                  title="Direct Messages"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                </button>
 
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white text-slate-800 border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                  <div className="p-4 bg-[#022448] text-white flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-[#feae2c]" />
-                      <span className="font-bold text-sm">Notifications</span>
-                    </div>
-                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{unreadNotifs.length} unread</span>
-                  </div>
-
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-slate-500 text-xs">No notifications yet</div>
-                    ) : (
-                      notifications.map(n => (
-                        <div
-                          key={n.id}
-                          onClick={() => markNotifAsRead(n.id)}
-                          className={`p-3.5 hover:bg-slate-50 cursor-pointer transition-colors ${!n.isRead ? 'bg-blue-50/60' : ''}`}
-                        >
-                          <div className="flex justify-between items-start mb-1">
-                            <span className="font-semibold text-xs text-[#022448]">{n.title}</span>
-                            <span className="text-[10px] text-slate-400">{n.timestamp}</span>
-                          </div>
-                          <p className="text-xs text-slate-600 leading-snug">{n.message}</p>
-                        </div>
-                      ))
+                {/* Notifications Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                    className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors relative"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {unreadNotifs.length > 0 && (
+                      <span className="absolute top-1 right-1 w-4 h-4 bg-[#e96645] text-white font-bold text-[10px] rounded-full flex items-center justify-center animate-pulse">
+                        {unreadNotifs.length}
+                      </span>
                     )}
-                  </div>
+                  </button>
+
+                  {isNotifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white text-slate-800 border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                      <div className="p-4 bg-[#022448] text-white flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-[#feae2c]" />
+                          <span className="font-bold text-sm">Notifications</span>
+                        </div>
+                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{unreadNotifs.length} unread</span>
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                        {userNotifications.length === 0 ? (
+                          <div className="p-6 text-center text-slate-500 text-xs">
+                            No notifications for your account yet.
+                          </div>
+                        ) : (
+                          userNotifications.map(n => (
+                            <div
+                              key={n.id}
+                              onClick={() => markNotifAsRead(n.id)}
+                              className={`p-3.5 hover:bg-slate-50 cursor-pointer transition-colors ${!n.isRead ? 'bg-blue-50/60' : ''}`}
+                            >
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="font-semibold text-xs text-[#022448]">{n.title}</span>
+                                <span className="text-[10px] text-slate-400">{n.timestamp}</span>
+                              </div>
+                              <p className="text-xs text-slate-600 leading-snug">{n.message}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
 
             {/* Profile Avatar & Auth buttons */}
             {currentUser ? (
@@ -337,28 +308,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               <LayoutDashboard className="w-4 h-4 text-[#feae2c]" /> My Dashboard
             </button>
           )}
-
-          <div className="pt-2 border-t border-white/10 flex flex-wrap gap-2">
-            <span className="text-xs text-blue-200 w-full mb-1">Switch Demo Role:</span>
-            <button
-              onClick={() => { switchDemoUser('student'); setCurrentTab('student_dashboard'); setIsMobileMenuOpen(false); }}
-              className="px-3 py-1.5 bg-emerald-600/30 text-emerald-200 text-xs rounded-lg border border-emerald-400/30"
-            >
-              🎓 Student
-            </button>
-            <button
-              onClick={() => { switchDemoUser('tutor'); setCurrentTab('tutor_dashboard'); setIsMobileMenuOpen(false); }}
-              className="px-3 py-1.5 bg-blue-600/30 text-blue-200 text-xs rounded-lg border border-blue-400/30"
-            >
-              👨‍🏫 Tutor
-            </button>
-            <button
-              onClick={() => { switchDemoUser('admin'); setCurrentTab('admin_dashboard'); setIsMobileMenuOpen(false); }}
-              className="px-3 py-1.5 bg-purple-600/30 text-purple-200 text-xs rounded-lg border border-purple-400/30"
-            >
-              🛡️ Admin
-            </button>
-          </div>
         </div>
       )}
     </header>

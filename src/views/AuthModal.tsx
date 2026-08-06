@@ -10,7 +10,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSuccess }) => {
-  const { login, register, isEmailTaken, isPhoneTaken } = useAuth();
+  const { login, register, switchDemoUser, isEmailTaken, isPhoneTaken } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
   const [role, setRole] = useState<UserRole>('student');
@@ -30,6 +30,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const handleDemoSignIn = (targetRole: UserRole) => {
+    switchDemoUser(targetRole);
+    onSuccess();
+    onClose();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +126,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
               : 'Enter your email to receive recovery instructions'}
           </p>
         </div>
+
+        {/* Quick Demo Credentials Banner in Login Mode */}
+        {mode === 'login' && (
+          <div className="mb-5 p-3 bg-blue-50/70 border border-blue-100 rounded-2xl">
+            <span className="text-[11px] font-bold text-[#022448] block mb-2 text-center">
+              ⚡ Instant Demo Sign-In (Select Role):
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('student')}
+                className="py-1.5 px-2 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold rounded-xl shadow-xs transition-all text-center"
+              >
+                🎓 Student
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('tutor')}
+                className="py-1.5 px-2 bg-white hover:bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-bold rounded-xl shadow-xs transition-all text-center"
+              >
+                👨‍🏫 Tutor
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('admin')}
+                className="py-1.5 px-2 bg-white hover:bg-purple-50 text-purple-800 border border-purple-200 text-[11px] font-bold rounded-xl shadow-xs transition-all text-center"
+              >
+                🛡️ Admin
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Role Toggle for Register Mode */}
         {mode === 'register' && (

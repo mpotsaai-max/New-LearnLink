@@ -6,7 +6,6 @@ import { Footer } from './components/Footer';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { EmailNotificationDrawer } from './components/EmailNotificationDrawer';
 import { ChatModal } from './components/ChatModal';
-import { PageTourBar } from './components/PageTourBar';
 
 import { LandingView } from './views/LandingView';
 import { TutorDirectoryView } from './views/TutorDirectoryView';
@@ -44,8 +43,8 @@ export const AppContent: React.FC = () => {
         onOpenAuthModal={handleOpenAuth}
       />
 
-      {/* Main View Routing with padding for Tour Bar */}
-      <main className="flex-1 pb-24">
+      {/* Main View Routing */}
+      <main className="flex-1">
         {currentTab === 'landing' && (
           <LandingView
             onNavigate={setCurrentTab}
@@ -86,13 +85,6 @@ export const AppContent: React.FC = () => {
 
       {/* Global Footer */}
       <Footer />
-
-      {/* Guided Tour Navigation Bar */}
-      <PageTourBar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        onSelectTutor={handleSelectTutor}
-      />
 
       {/* Overlays & Drawers */}
       <KeyboardShortcutsModal onNavigate={setCurrentTab} />
