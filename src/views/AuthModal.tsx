@@ -7,9 +7,10 @@ interface AuthModalProps {
   initialMode: 'login' | 'register';
   onClose: () => void;
   onSuccess: () => void;
+  onOpenTermsModal?: (tab?: 'general' | 'fee' | 'tutor' | 'privacy') => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSuccess, onOpenTermsModal }) => {
   const { login, register, switchDemoUser, isEmailTaken, isPhoneTaken } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
@@ -316,10 +317,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
               </div>
 
               {/* 15% Platform Fee Disclosure Box */}
-              <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-950 space-y-1">
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-950 space-y-1.5">
                 <div className="font-bold flex items-center justify-between text-[#022448]">
                   <span>💼 LearnLink 15% Platform Commission:</span>
-                  <span className="text-amber-800 font-extrabold">15% Deducted</span>
+                  <button
+                    type="button"
+                    onClick={() => onOpenTermsModal?.('fee')}
+                    className="text-amber-800 font-extrabold underline hover:text-amber-950 cursor-pointer"
+                  >
+                    View Fee & Escrow Policy →
+                  </button>
                 </div>
                 <p className="text-[10.5px] leading-tight text-slate-700">
                   Platform fee covers Daily.co HD WebRTC video classroom hosting, Mobile Money Escrow security, and student matching.
@@ -335,7 +342,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
 
           {/* Terms & Conditions Acceptance Checkbox */}
           {mode === 'register' && (
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -356,6 +363,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
                   )}
                 </span>
               </label>
+
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => onOpenTermsModal?.(role === 'tutor' ? 'tutor' : 'general')}
+                  className="text-[10.5px] text-[#022448] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  📖 Read Full Official Terms & Legal Document →
+                </button>
+              </div>
             </div>
           )}
 

@@ -5,9 +5,10 @@ import { useApp } from '../context/AppContext';
 interface FooterProps {
   onNavigate?: (tab: string) => void;
   onOpenAuthModal?: (mode: 'login' | 'register') => void;
+  onOpenTermsModal?: (tab?: 'general' | 'fee' | 'tutor' | 'privacy') => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAuthModal }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAuthModal, onOpenTermsModal }) => {
   const { setSelectedSubject, setSearchQuery, setSelectedLevel } = useApp();
 
   const handleExploreLink = (type: 'math' | 'science' | 'programming' | 'finance' | 'become_tutor') => {
@@ -154,22 +155,28 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAuthModal }) =
           <p>© 2026 LearnLink Botswana. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <button
-              onClick={() => alert("LearnLink Privacy Policy: All student and tutor personal data is encrypted and protected in accordance with the Botswana Data Protection Act.")}
-              className="hover:text-white transition-colors"
+              onClick={() => onOpenTermsModal?.('privacy')}
+              className="hover:text-white transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
             <button
-              onClick={() => alert("Terms of Escrow Service: All session fees are securely locked in LearnLink Escrow until the student or tutor confirms session completion.")}
-              className="hover:text-white transition-colors"
+              onClick={() => onOpenTermsModal?.('fee')}
+              className="hover:text-white transition-colors cursor-pointer"
             >
-              Terms of Escrow Service
+              Terms of Escrow Service & 15% Fee
             </button>
             <button
-              onClick={() => alert("Tutor Code of Conduct: Tutors must be verified with Omang National ID and academic certificates. 15% platform commission applies to payouts.")}
-              className="hover:text-white transition-colors"
+              onClick={() => onOpenTermsModal?.('tutor')}
+              className="hover:text-white transition-colors cursor-pointer"
             >
-              Tutor Code of Conduct
+              Tutor Code of Conduct & Anti-Circumvention
+            </button>
+            <button
+              onClick={() => onOpenTermsModal?.('general')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              Platform Terms & Disclaimers
             </button>
           </div>
         </div>

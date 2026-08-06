@@ -7,6 +7,7 @@ import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { EmailNotificationDrawer } from './components/EmailNotificationDrawer';
 import { ChatModal } from './components/ChatModal';
 import { DailyClassroomModal } from './components/DailyClassroomModal';
+import { TermsModal } from './components/TermsModal';
 import { useApp } from './context/AppContext';
 
 import { LandingView } from './views/LandingView';
@@ -25,6 +26,15 @@ export const AppContent: React.FC = () => {
   // Auth modal
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  // Terms Modal State
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [termsTab, setTermsTab] = useState<'general' | 'fee' | 'tutor' | 'privacy'>('general');
+
+  const handleOpenTerms = (tab?: 'general' | 'fee' | 'tutor' | 'privacy') => {
+    if (tab) setTermsTab(tab);
+    setIsTermsOpen(true);
+  };
 
   const handleOpenAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);
@@ -90,6 +100,7 @@ export const AppContent: React.FC = () => {
       <Footer
         onNavigate={setCurrentTab}
         onOpenAuthModal={handleOpenAuth}
+        onOpenTermsModal={handleOpenTerms}
       />
 
       {/* Overlays & Drawers */}
@@ -113,8 +124,16 @@ export const AppContent: React.FC = () => {
           initialMode={authMode}
           onClose={() => setIsAuthOpen(false)}
           onSuccess={() => {}}
+          onOpenTermsModal={handleOpenTerms}
         />
       )}
+
+      {/* Terms & Conditions Modal */}
+      <TermsModal
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+        defaultTab={termsTab}
+      />
 
     </div>
   );
