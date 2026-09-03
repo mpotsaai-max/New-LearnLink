@@ -2,20 +2,27 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
 import { INITIAL_USERS } from '../data/initialData';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  sendEmailVerification 
+} from 'firebase/auth';
+import { db, auth } from '../firebase/config';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
   users: UserProfile[];
-  login: (email: string, pass: string) => {
+  login: (email: string, pass: string) => Promise<{
     success: boolean;
     error?: string;
     requiresEmailVerification?: boolean;
     unverifiedUser?: UserProfile;
-  };
+  }>;
   register: (userData: {
     fullName: string;
     email: string;
+    password?: string;
     phoneNumber: string;
     role: UserRole;
     bio?: string;
@@ -31,8 +38,10 @@ interface AuthContextType {
     resumeDocUrl?: string;
     academicRecordDocUrl?: string;
     omangIdDocUrl?: string;
-  }) => { success: boolean; error?: string; user?: UserProfile };
+  }) => Promise<{ success: boolean; error?: string; user?: UserProfile; firebaseEmailSent?: boolean }>;
   verifyStudentEmail: (email: string) => { success: boolean; error?: string };
+  resendVerificationEmail: (email?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  checkEmailVerified: (email?: string) => Promise<{ verified: boolean; error?: string }>;
   logout: () => void;
   switchDemoUser: (role: UserRole) => void;
   updateUserProfile: (id: string, updates: Partial<UserProfile>) => void;
@@ -117,35 +126,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return users.some(u => u.phoneNumber.replace(/\s+/g, '') === clean);
   };
 
-  const login = (email: string, _pass: string) => {
-    const found = users.find(u => u.email.trim().toLowerCase() === email.trim().toLowerCase());
-    if (!found) {
-      return { success: false, error: 'No account found with this email address.' };
-    }
-    if (found.status === 'suspended') {
-      return { success: false, error: 'Your account has been suspended by LearnLink Admin. Please contact support@learnlink.co.bw.' };
+  const login = async (email: string, pass: string): Promise<{
+    success: boolean;
+    error?: string;
+    requiresEmailVerification?: boolean;
+    unverifiedUser?: UserProfile;
+  }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
+
+    if (found) {
+      if (found.status === 'suspended') {
+        return { success: false, error: 'Your account has been suspended by LearnLink Admin. Please contact support@learnlink.co.bw.' };
+      }
+
+      // Tutor Approval Check: Cannot log in before admin approval
+      if (found.role === 'tutor' && (found.status === 'pending_verification' || !found.isVerifiedTutor)) {
+        return {
+          success: false,
+          error: 'Your tutor registration and uploaded credentials (ID, Transcripts, Resume) are currently under review by LearnLink Admin. Tutors cannot log in until account approval.'
+        };
+      }
+
+      // Student Email Verification Check
+      if (found.role === 'student' && found.emailVerified === false) {
+        return {
+          success: false,
+          requiresEmailVerification: true,
+          unverifiedUser: found,
+          error: 'Your student account email address has not been verified yet. Please enter your email verification code to proceed.'
+        };
+      }
     }
 
-    // Tutor Approval Check: Cannot log in before admin approval
-    if (found.role === 'tutor' && (found.status === 'pending_verification' || !found.isVerifiedTutor)) {
-      return {
-        success: false,
-        error: 'Your tutor registration and uploaded credentials (ID, Transcripts, Resume) are currently under review by LearnLink Admin. Tutors cannot log in until account approval.'
+    let firebaseAuthSuccess = false;
+    // Attempt Firebase Authentication with email & password
+    if (auth && pass && pass.length >= 6) {
+      try {
+        await signInWithEmailAndPassword(auth, email.trim(), pass);
+        firebaseAuthSuccess = true;
+      } catch (fbErr: any) {
+        console.warn('Firebase Auth sign-in notice:', fbErr?.code || fbErr?.message);
+        if (fbErr?.code === 'auth/invalid-credential' || fbErr?.code === 'auth/wrong-password') {
+          return { success: false, error: 'Incorrect email address or password. Please check your credentials.' };
+        }
+        if (fbErr?.code === 'auth/user-disabled') {
+          return { success: false, error: 'This user account has been disabled.' };
+        }
+      }
+    }
+
+    // Found in system users list
+    if (found) {
+      setCurrentUser(found);
+      return { success: true };
+    }
+
+    // Authenticated via Firebase Auth but first time on this browser
+    if (firebaseAuthSuccess) {
+      const newUser: UserProfile = {
+        id: `usr_${Date.now()}`,
+        email: email.trim(),
+        fullName: email.split('@')[0],
+        phoneNumber: '',
+        role: 'student',
+        status: 'active',
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
+        joinedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
       };
+      setUsers(prev => [newUser, ...prev]);
+      setCurrentUser(newUser);
+      return { success: true };
     }
 
-    // Student Email Verification Check
-    if (found.role === 'student' && found.emailVerified === false) {
-      return {
-        success: false,
-        requiresEmailVerification: true,
-        unverifiedUser: found,
-        error: 'Your student account email address has not been verified yet. Please enter your email verification code to proceed.'
-      };
-    }
-
-    setCurrentUser(found);
-    return { success: true };
+    return { success: false, error: 'No registered account found with this email address. Please click Register to create an account.' };
   };
 
   const verifyStudentEmail = (email: string) => {
@@ -167,9 +221,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const register = (data: {
+  const register = async (data: {
     fullName: string;
     email: string;
+    password?: string;
     phoneNumber: string;
     role: UserRole;
     bio?: string;
@@ -185,13 +240,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     resumeDocUrl?: string;
     academicRecordDocUrl?: string;
     omangIdDocUrl?: string;
-  }) => {
+  }): Promise<{ success: boolean; error?: string; user?: UserProfile; firebaseEmailSent?: boolean }> => {
     // Unique Email & Phone validation check
     if (isEmailTaken(data.email)) {
       return { success: false, error: 'An account with this email address already exists.' };
     }
     if (isPhoneTaken(data.phoneNumber)) {
       return { success: false, error: 'An account with this mobile phone number already exists.' };
+    }
+
+    // Attempt Firebase Authentication account creation
+    let firebaseEmailSent = false;
+    if (auth && data.password && data.password.length >= 6) {
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
+        if (userCred.user) {
+          try {
+            await sendEmailVerification(userCred.user);
+            firebaseEmailSent = true;
+            console.log('Firebase verification email successfully sent to:', data.email.trim());
+          } catch (emailErr: any) {
+            console.warn('Firebase sendEmailVerification notice:', emailErr?.code || emailErr?.message);
+          }
+        }
+      } catch (fbErr: any) {
+        console.warn('Firebase Auth createUser notice:', fbErr?.code || fbErr?.message);
+        if (fbErr?.code === 'auth/email-already-in-use') {
+          return { success: false, error: 'This email address is already registered in Firebase. Please sign in.' };
+        }
+        if (fbErr?.code === 'auth/weak-password') {
+          return { success: false, error: 'Password must be at least 6 characters.' };
+        }
+        if (fbErr?.code === 'auth/operation-not-allowed') {
+          return { 
+            success: false, 
+            error: 'Firebase Auth: Email/Password sign-in provider is not enabled in your Firebase Console (Authentication > Sign-in method).' 
+          };
+        }
+        if (fbErr?.code === 'auth/invalid-email') {
+          return { success: false, error: 'Please enter a valid email address.' };
+        }
+      }
     }
 
     const isTutor = data.role === 'tutor';
@@ -256,11 +345,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Firestore save notice:', e);
     }
 
-    return { success: true, user: newUser };
+    return { success: true, user: newUser, firebaseEmailSent };
+  };
+
+  const resendVerificationEmail = async (email?: string): Promise<{ success: boolean; error?: string; message?: string }> => {
+    try {
+      if (auth && auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        return { 
+          success: true, 
+          message: `Firebase verification email resent to ${auth.currentUser.email || email}. Please check your inbox and spam folder.` 
+        };
+      }
+      return { 
+        success: false, 
+        error: 'Unable to resend: No active Firebase Auth user session. Please sign in or re-register.' 
+      };
+    } catch (err: any) {
+      console.warn('Firebase resend verification error:', err);
+      if (err?.code === 'auth/too-many-requests') {
+        return { success: false, error: 'Firebase rate-limit: Please wait a moment before requesting another email.' };
+      }
+      return { success: false, error: err?.message || 'Failed to dispatch verification email.' };
+    }
+  };
+
+  const checkEmailVerified = async (email?: string): Promise<{ verified: boolean; error?: string }> => {
+    try {
+      if (auth && auth.currentUser) {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          const targetEmail = email || auth.currentUser.email;
+          if (targetEmail) {
+            verifyStudentEmail(targetEmail);
+          }
+          return { verified: true };
+        }
+        return { verified: false };
+      }
+      return { verified: false, error: 'No active session found.' };
+    } catch (err: any) {
+      return { verified: false, error: err?.message };
+    }
   };
 
   const logout = () => {
     setCurrentUser(null);
+    try {
+      if (auth) {
+        signOut(auth).catch(err => console.warn('Firebase signOut notice:', err));
+      }
+    } catch (e) {
+      console.warn('Firebase signOut error:', e);
+    }
   };
 
   const switchDemoUser = (role: UserRole) => {
@@ -302,6 +439,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         verifyStudentEmail,
+        resendVerificationEmail,
+        checkEmailVerified,
         logout,
         switchDemoUser,
         updateUserProfile,

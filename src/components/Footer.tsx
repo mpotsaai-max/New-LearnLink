@@ -153,7 +153,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAuthModal, onO
 
         <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-blue-200/60">
           <p>© 2026 LearnLink Botswana. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <button
               onClick={() => onOpenTermsModal?.('privacy')}
               className="hover:text-white transition-colors cursor-pointer"
@@ -178,6 +178,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAuthModal, onO
             >
               Platform Terms & Disclaimers
             </button>
+            <a
+              href="#admin"
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.hash = 'admin';
+                onNavigate?.('admin_dashboard');
+              }}
+              className="text-white/25 hover:text-white/80 transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+              title="Administrator Portal (Restricted)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" /> Staff Portal
+            </a>
           </div>
         </div>
       </div>

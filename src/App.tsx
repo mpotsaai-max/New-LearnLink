@@ -46,6 +46,32 @@ export const AppContent: React.FC = () => {
     setCurrentTab('tutor_profile');
   };
 
+  // Direct Unique Admin Link & Hash Routing
+  useEffect(() => {
+    const handleRouteFromUrl = () => {
+      const hash = window.location.hash.toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      if (
+        hash === '#admin' ||
+        hash === '#/admin' ||
+        hash === '#admin_portal' ||
+        params.get('portal') === 'admin' ||
+        params.get('admin') === 'true' ||
+        params.get('tab') === 'admin_dashboard'
+      ) {
+        setCurrentTab('admin_dashboard');
+      }
+    };
+
+    handleRouteFromUrl();
+    window.addEventListener('hashchange', handleRouteFromUrl);
+    window.addEventListener('popstate', handleRouteFromUrl);
+    return () => {
+      window.removeEventListener('hashchange', handleRouteFromUrl);
+      window.removeEventListener('popstate', handleRouteFromUrl);
+    };
+  }, []);
+
   // Synchronize browser tab <title> dynamically with current page / view / modal
   useEffect(() => {
     let pageTitle = 'Home';

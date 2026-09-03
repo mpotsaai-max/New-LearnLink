@@ -20,7 +20,7 @@ import { useApp } from '../context/AppContext';
 import { UserProfile } from '../types';
 
 export const AdminDashboardView: React.FC = () => {
-  const { users, updateUserProfile } = useAuth();
+  const { currentUser, users, updateUserProfile, switchDemoUser } = useAuth();
   const {
     transactions,
     approveTutorVerification,
@@ -33,6 +33,105 @@ export const AdminDashboardView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocsModalUser, setSelectedDocsModalUser] = useState<UserProfile | null>(null);
   const [rejectionReason, setRejectionReason] = useState('Incomplete degree documentation');
+
+  // Admin Access Gate State
+  const [adminPasskey, setAdminPasskey] = useState('');
+  const [adminEmail, setAdminEmail] = useState('admin@learnlink.co.bw');
+  const [adminAuthError, setAdminAuthError] = useState('');
+  const [isAuthenticatingAdmin, setIsAuthenticatingAdmin] = useState(false);
+
+  const handleAdminLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminAuthError('');
+    setIsAuthenticatingAdmin(true);
+
+    try {
+      if (adminPasskey.trim().length >= 4) {
+        switchDemoUser('admin');
+      } else {
+        setAdminAuthError('Please enter a valid Admin security PIN (min 4 characters).');
+      }
+    } catch {
+      setAdminAuthError('Failed to authenticate as administrator.');
+    } finally {
+      setIsAuthenticatingAdmin(false);
+    }
+  };
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-[#022448] text-[#feae2c] flex items-center justify-center mx-auto shadow-md">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <div>
+            <div className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-800 mb-2">
+              Staff Portal Restricted
+            </div>
+            <h2 className="text-2xl font-black text-[#022448]">LearnLink Admin Portal</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Restricted governance portal for verified LearnLink operations staff and auditors.
+            </p>
+          </div>
+
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Administrator Email</label>
+              <input
+                type="email"
+                value={adminEmail}
+                onChange={e => setAdminEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#022448] outline-none"
+                placeholder="admin@learnlink.co.bw"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Security PIN / Passkey</label>
+              <input
+                type="password"
+                value={adminPasskey}
+                onChange={e => setAdminPasskey(e.target.value)}
+                placeholder="Enter admin passcode (e.g. 2026)"
+                className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#022448] outline-none"
+                required
+              />
+            </div>
+
+            {adminAuthError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{adminAuthError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isAuthenticatingAdmin}
+              className="w-full py-3 bg-[#022448] hover:bg-[#033468] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            >
+              {isAuthenticatingAdmin ? 'Verifying Admin Authority...' : 'Unlock Admin Portal'}
+            </button>
+          </form>
+
+          <div className="pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '';
+                window.location.reload();
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            >
+              ← Return to Main Platform
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const pendingTutors = users.filter(u => u.role === 'tutor' && (u.status === 'pending_verification' || !u.isVerifiedTutor));
   const allTutors = users.filter(u => u.role === 'tutor');
