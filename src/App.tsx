@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { Navbar } from './components/Navbar';
@@ -46,6 +46,72 @@ export const AppContent: React.FC = () => {
     setCurrentTab('tutor_profile');
   };
 
+  // Synchronize browser tab <title> dynamically with current page / view / modal
+  useEffect(() => {
+    let pageTitle = 'Home';
+
+    if (isAuthOpen) {
+      pageTitle = authMode === 'login' ? 'Login' : 'Sign Up';
+    } else if (activeDailySession) {
+      pageTitle = 'Live Classroom';
+    } else if (isTermsOpen) {
+      switch (termsTab) {
+        case 'privacy':
+          pageTitle = 'Privacy Policy';
+          break;
+        case 'fee':
+          pageTitle = 'Terms of Escrow';
+          break;
+        case 'tutor':
+          pageTitle = 'Tutor Agreement';
+          break;
+        case 'general':
+        default:
+          pageTitle = 'Terms of Service';
+          break;
+      }
+    } else {
+      switch (currentTab) {
+        case 'landing':
+          pageTitle = 'Home';
+          break;
+        case 'tutors':
+        case 'courses':
+          pageTitle = 'Courses';
+          break;
+        case 'tutor_profile':
+          pageTitle = 'Profile';
+          break;
+        case 'student_dashboard':
+          pageTitle = 'Student Dashboard';
+          break;
+        case 'tutor_dashboard':
+          pageTitle = 'Teacher Dashboard';
+          break;
+        case 'admin_dashboard':
+          pageTitle = 'Admin Portal';
+          break;
+        case 'about':
+        case 'about_us':
+          pageTitle = 'About Us';
+          break;
+        case 'contact':
+        case 'contact_us':
+          pageTitle = 'Contact Us';
+          break;
+        default: {
+          const formatted = currentTab
+            .replace(/[_-]/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+          pageTitle = formatted || 'Home';
+          break;
+        }
+      }
+    }
+
+    document.title = `LearnLink - ${pageTitle}`;
+  }, [currentTab, isAuthOpen, authMode, isTermsOpen, termsTab, activeDailySession]);
+
   return (
     <div className="min-h-screen bg-[#fcf8fb] text-slate-800 flex flex-col font-sans selection:bg-[#feae2c] selection:text-[#022448]">
       
@@ -58,7 +124,7 @@ export const AppContent: React.FC = () => {
 
       {/* Main View Routing */}
       <main className="flex-1">
-        {currentTab === 'landing' && (
+        {(currentTab === 'landing' || currentTab === 'about' || currentTab === 'about_us' || currentTab === 'contact' || currentTab === 'contact_us') && (
           <LandingView
             onNavigate={setCurrentTab}
             onSelectTutor={handleSelectTutor}
@@ -66,7 +132,7 @@ export const AppContent: React.FC = () => {
           />
         )}
 
-        {currentTab === 'tutors' && (
+        {(currentTab === 'tutors' || currentTab === 'courses') && (
           <TutorDirectoryView
             onSelectTutor={handleSelectTutor}
           />
