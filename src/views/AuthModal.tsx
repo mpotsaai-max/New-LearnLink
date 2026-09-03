@@ -41,33 +41,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
   // Student Email Verification Flow
   const [showVerificationStep, setShowVerificationStep] = useState(false);
   const [unverifiedStudentEmail, setUnverifiedStudentEmail] = useState('');
-  const [pinCode, setPinCode] = useState('784920'); // Simulated 6-digit PIN
+
+  // Auto-check Firebase verification status when user returns to this browser tab
+  React.useEffect(() => {
+    if (!showVerificationStep || !unverifiedStudentEmail) return;
+
+    let isMounted = true;
+    const checkStatusQuietly = async () => {
+      try {
+        const result = await checkEmailVerified(unverifiedStudentEmail);
+        if (result.verified && isMounted) {
+          setSuccessMessage('Email verification confirmed! Logging you in...');
+          setTimeout(() => {
+            onSuccess();
+            onClose();
+          }, 1000);
+        }
+      } catch {
+        // silent check
+      }
+    };
+
+    const handleFocus = () => {
+      checkStatusQuietly();
+    };
+
+    // Periodic check every 4 seconds in case user clicked in background/another window
+    const interval = setInterval(checkStatusQuietly, 4000);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [showVerificationStep, unverifiedStudentEmail, checkEmailVerified, onSuccess, onClose]);
 
   // Terms & Conditions Acceptance
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
-  const handleVerifyStudentCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    if (!pinCode.trim() || pinCode.trim().length < 4) {
-      setErrorMessage('Please enter a valid verification code or click the verification link in your email.');
-      return;
-    }
-
-    const res = verifyStudentEmail(unverifiedStudentEmail);
-    if (res.success) {
-      setSuccessMessage('Email verified successfully! Logging you in...');
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1200);
-    } else {
-      setErrorMessage(res.error || 'Failed to verify email address.');
-    }
-  };
 
   const handleCheckEmailVerified = async () => {
     setIsCheckingEmail(true);
@@ -76,14 +90,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
     try {
       const result = await checkEmailVerified(unverifiedStudentEmail);
       if (result.verified) {
-        setSuccessMessage('Verification confirmed! Your email has been verified. Logging you in...');
+        setSuccessMessage('Email verified successfully! Activating your LearnLink account...');
         setTimeout(() => {
           onSuccess();
           onClose();
         }, 1200);
       } else {
         setErrorMessage(
-          'Verification link has not been clicked yet. Please click the link sent to your email (check Spam/Junk folder), or enter your 6-digit code below.'
+          'Email not yet verified. Please open your email (check your Spam/Junk folder), click the verification link, and then click this button again.'
         );
       }
     } catch (e: any) {
@@ -100,7 +114,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
     try {
       const res = await resendVerificationEmail(unverifiedStudentEmail);
       if (res.success) {
-        setSuccessMessage(res.message || `Firebase verification email sent to ${unverifiedStudentEmail}! Check your inbox and spam folder.`);
+        setSuccessMessage(res.message || `Verification email re-dispatched to ${unverifiedStudentEmail}! Please check your Spam/Junk folder if not in Inbox.`);
       } else {
         setErrorMessage(res.error || 'Failed to dispatch email.');
       }
@@ -301,35 +315,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
               </button>
             </div>
 
-            <div className="relative my-4 max-w-sm mx-auto">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-slate-400 text-[10px] font-bold">Or enter 6-digit PIN manually</span>
-              </div>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left max-w-sm mx-auto space-y-2.5">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Next Steps to Activate:
+              </h4>
+              <ol className="text-xs text-slate-600 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>Check your email inbox or <strong>Spam / Junk folder</strong>.</li>
+                <li>Click the official <strong>verification link</strong> in the email.</li>
+                <li>Return to this page — LearnLink will automatically detect your confirmation, or click the yellow button above.</li>
+              </ol>
             </div>
-
-            <form onSubmit={handleVerifyStudentCode} className="space-y-3 max-w-sm mx-auto">
-              <div>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={pinCode}
-                  onChange={e => setPinCode(e.target.value)}
-                  placeholder="Enter 6-digit code"
-                  className="w-full text-center tracking-[0.3em] text-base font-mono font-bold py-2 border border-slate-300 rounded-xl focus:border-[#022448] outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-[#022448] text-white font-bold text-xs rounded-xl hover:bg-[#033466] transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Verify Code & Activate Account
-                <ArrowRight className="w-3.5 h-3.5 text-[#feae2c]" />
-              </button>
-            </form>
 
             <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-slate-500 text-left max-w-sm mx-auto">
               💡 <strong>Spam Folder Check:</strong> Verification emails arrive from Firebase (<code className="text-slate-700">noreply@learnlink-firebase.firebaseapp.com</code>). If not in your inbox within 1–2 minutes, please inspect your Spam/Junk folder.
