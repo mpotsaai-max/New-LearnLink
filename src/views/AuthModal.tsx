@@ -5,16 +5,23 @@ import { UserRole } from '../types';
 
 interface AuthModalProps {
   initialMode: 'login' | 'register';
+  initialRole?: UserRole;
   onClose: () => void;
   onSuccess: () => void;
   onOpenTermsModal?: (tab?: 'general' | 'fee' | 'tutor' | 'privacy') => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSuccess, onOpenTermsModal }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, initialRole = 'student', onClose, onSuccess, onOpenTermsModal }) => {
   const { login, signInWithGoogle, register, resendVerificationEmail, checkEmailVerified, isPhoneTaken } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
-  const [role, setRole] = useState<UserRole>('student');
+  const [role, setRole] = useState<UserRole>(initialRole);
+  const [googleConnected, setGoogleConnected] = useState<{
+    email: string;
+    fullName: string;
+    photoURL?: string;
+    uid: string;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
@@ -131,20 +138,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
     setErrorMessage('');
     setSuccessMessage('');
     try {
-      const res = await signInWithGoogle(role);
+      const res = await signInWithGoogle({
+        preferredRole: role,
+        mode: mode === 'forgot' ? 'login' : mode
+      });
+
       if (res.success) {
-        if (res.user?.role === 'tutor' && !res.user.isVerifiedTutor) {
-          setSuccessMessage('Google authentication verified! Your tutor account is submitted for review.');
-          setTimeout(() => {
-            onSuccess();
-            onClose();
-          }, 1200);
-        } else {
-          setSuccessMessage('Successfully authenticated with Google!');
+        if (mode === 'login') {
+          // Standard Sign In
+          setSuccessMessage('Successfully authenticated with Google! Logging you in...');
           setTimeout(() => {
             onSuccess();
             onClose();
           }, 800);
+        } else {
+          // Register Mode
+          if (role === 'student') {
+            setSuccessMessage('Student account created with Google! Welcome to LearnLink.');
+            setTimeout(() => {
+              onSuccess();
+              onClose();
+            }, 800);
+          } else {
+            // Tutor Registration: Google identity verified, now tutor must fill out qualifications & uploads
+            if (res.googleProfile) {
+              setGoogleConnected(res.googleProfile);
+              if (res.googleProfile.fullName && !fullName) {
+                setFullName(res.googleProfile.fullName);
+              }
+              setEmail(res.googleProfile.email);
+              if (res.googleProfile.phoneNumber && phoneNumber === '+267 71 ') {
+                setPhoneNumber(res.googleProfile.phoneNumber);
+              }
+              setSuccessMessage(
+                `Google profile verified (${res.googleProfile.email})! Please complete your credentials and upload your 3 required documents below to submit your tutor application.`
+              );
+            }
+          }
         }
       } else {
         setErrorMessage(res.error || 'Failed to authenticate with Google.');
@@ -181,7 +211,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
           return;
         }
 
-        if (!password || password.length < 6) {
+        // Only require password if not already connected via Google
+        if (!googleConnected && (!password || password.length < 6)) {
           setErrorMessage('Password must be at least 6 characters long.');
           setIsSubmitting(false);
           return;
@@ -232,7 +263,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
         const res = await register({
           fullName,
           email,
-          password,
+          password: password || (googleConnected ? `GoogleAuth_${googleConnected.uid}` : undefined),
           phoneNumber,
           role,
           courseOrMajor: role === 'tutor' ? courseOrMajor : undefined,
@@ -253,14 +284,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
         if (res.success) {
           if (role === 'tutor') {
             setSuccessMessage('Application submitted! Your credentials and uploaded documents are under review by LearnLink Admin. Tutors cannot log in until approved.');
+            setGoogleConnected(null);
             setTimeout(() => {
               setMode('login');
               setSuccessMessage('');
-            }, 4000);
+            }, 4500);
           } else {
-            // Student requires email verification code step
-            setUnverifiedStudentEmail(email);
-            setShowVerificationStep(true);
+            // Student requires email verification code step if not Google
+            if (googleConnected) {
+              setSuccessMessage('Student registration successful! Logging you in...');
+              setTimeout(() => {
+                onSuccess();
+                onClose();
+              }, 800);
+            } else {
+              setUnverifiedStudentEmail(email);
+              setShowVerificationStep(true);
+            }
           }
         } else {
           setErrorMessage(res.error || 'Failed to create account.');
@@ -389,7 +429,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
               <div className="flex bg-slate-100 p-1 rounded-2xl mb-5">
                 <button
                   type="button"
-                  onClick={() => setRole('student')}
+                  onClick={() => {
+                    setRole('student');
+                    setGoogleConnected(null);
+                    setErrorMessage('');
+                  }}
                   className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
                     role === 'student'
                       ? 'bg-[#022448] text-white shadow-md'
@@ -400,7 +444,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole('tutor')}
+                  onClick={() => {
+                    setRole('tutor');
+                    setGoogleConnected(null);
+                    setErrorMessage('');
+                  }}
                   className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
                     role === 'tutor'
                       ? 'bg-[#022448] text-white shadow-md'
@@ -450,10 +498,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
                       : mode === 'login'
                       ? 'Sign in with Google'
                       : role === 'tutor'
-                      ? 'Sign up with Google (Tutor)'
+                      ? (googleConnected ? `✓ Google Connected (${googleConnected.email.split('@')[0]})` : 'Step 1: Connect with Google (Tutor)')
                       : 'Sign up with Google (Student)'}
                   </span>
                 </button>
+
+                {/* Google Connected Badge for Tutor Application */}
+                {googleConnected && (
+                  <div className="mt-2.5 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-bold text-emerald-950 block truncate">
+                          {googleConnected.fullName || 'Google Account Verified'}
+                        </span>
+                        <span className="text-[10px] text-emerald-700 block truncate">
+                          {googleConnected.email}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[9.5px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full shrink-0">
+                      Identity Verified
+                    </span>
+                  </div>
+                )}
+
+                {mode === 'register' && role === 'tutor' && !googleConnected && (
+                  <p className="mt-2 text-[10.5px] text-slate-500 text-center">
+                    💡 Connecting your Google account verifies your email. You will then complete your qualifications and upload your Omang & transcripts below for admin review.
+                  </p>
+                )}
 
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">
@@ -521,16 +597,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ initialMode, onClose, onSu
 
               {mode !== 'forgot' && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">Password</label>
+                    {googleConnected && (
+                      <span className="text-[10px] text-emerald-600 font-bold">
+                        ✓ Connected with Google
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     <input
                       type="password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      placeholder="••••••••"
+                      placeholder={googleConnected ? "Optional (Google Auth active)" : "••••••••"}
                       className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#022448] outline-none"
-                      required
+                      required={!googleConnected}
                     />
                   </div>
                 </div>

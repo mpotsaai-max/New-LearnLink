@@ -21,11 +21,21 @@ interface AuthContextType {
     requiresEmailVerification?: boolean;
     unverifiedUser?: UserProfile;
   }>;
-  signInWithGoogle: (preferredRole?: UserRole) => Promise<{
+  signInWithGoogle: (options?: {
+    preferredRole?: UserRole;
+    mode?: 'login' | 'register';
+  }) => Promise<{
     success: boolean;
     error?: string;
     user?: UserProfile;
     isNewUser?: boolean;
+    googleProfile?: {
+      email: string;
+      fullName: string;
+      photoURL?: string;
+      phoneNumber?: string;
+      uid: string;
+    };
   }>;
   register: (userData: {
     fullName: string;
@@ -147,11 +157,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const signInWithGoogle = async (preferredRole: UserRole = 'student'): Promise<{
+  const signInWithGoogle = async (options?: {
+    preferredRole?: UserRole;
+    mode?: 'login' | 'register';
+  }): Promise<{
     success: boolean;
     error?: string;
     user?: UserProfile;
     isNewUser?: boolean;
+    googleProfile?: {
+      email: string;
+      fullName: string;
+      photoURL?: string;
+      phoneNumber?: string;
+      uid: string;
+    };
   }> => {
     try {
       if (!auth) {
@@ -168,37 +188,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'No email address found in this Google Account.' };
       }
 
+      const preferredRole = options?.preferredRole || 'student';
+      const authMode = options?.mode || 'login';
+
       // Check if user already exists in system
       const existing = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
 
-      if (existing) {
+      // Handle Sign-In Mode
+      if (authMode === 'login') {
+        if (!existing) {
+          return {
+            success: false,
+            error: `No LearnLink account registered with ${cleanEmail}. Please switch to "Join LearnLink" to create your account.`
+          };
+        }
+
         if (existing.status === 'suspended') {
           return { success: false, error: 'Your account has been suspended by LearnLink Admin. Please contact support@learnlink.co.bw.' };
         }
+
         if (existing.role === 'tutor' && (existing.status === 'pending_verification' || !existing.isVerifiedTutor)) {
           return {
             success: false,
-            error: 'Your tutor registration is currently pending admin verification and document review. Tutors cannot log in until approved.'
+            error: 'Your tutor registration is currently pending admin verification and document review. Tutors cannot access the portal until approved.'
           };
         }
+
         // Google accounts are pre-verified by Google
         const verifiedUser = { ...existing, emailVerified: true };
         setCurrentUser(verifiedUser);
         return { success: true, user: verifiedUser, isNewUser: false };
       }
 
-      // New registration via Google Account
-      const isTutor = preferredRole === 'tutor';
+      // Handle Register Mode
+      if (existing) {
+        // Enforce strict single-role policy
+        if (existing.role !== preferredRole) {
+          return {
+            success: false,
+            error: `This Google account (${cleanEmail}) is already registered as a ${existing.role.toUpperCase()} on LearnLink. An account cannot be both a student and a tutor. Please sign in as a ${existing.role} or use a different Google account.`
+          };
+        }
+        return {
+          success: false,
+          error: `An account for ${cleanEmail} already exists. Please switch to the Sign In tab to log in.`
+        };
+      }
+
+      // New Registration: Tutor flow vs Student flow
+      if (preferredRole === 'tutor') {
+        // CRITICAL: Tutors MUST NOT bypass credential & document verification!
+        // We return Google verified identity back to the modal to complete the application form
+        return {
+          success: true,
+          isNewUser: true,
+          googleProfile: {
+            email: cleanEmail,
+            fullName: fbUser.displayName || cleanEmail.split('@')[0],
+            photoURL: fbUser.photoURL || '',
+            phoneNumber: fbUser.phoneNumber || '',
+            uid: fbUser.uid
+          }
+        };
+      }
+
+      // New Student Registration via Google Account
       const newId = `usr_g_${Date.now()}`;
       const newUser: UserProfile = {
         id: newId,
         email: cleanEmail,
         fullName: fbUser.displayName || cleanEmail.split('@')[0],
         phoneNumber: fbUser.phoneNumber || '',
-        role: preferredRole,
-        status: isTutor ? 'pending_verification' : 'active',
+        role: 'student',
+        status: 'active',
         isVerifiedTutor: false,
-        emailVerified: true, // Google accounts are verified by Google!
+        emailVerified: true, // Google accounts are verified by Google
         avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
         joinedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         rating: 0,
@@ -206,17 +270,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         totalEarningsPula: 0,
         activeStudentsCount: 0,
         pendingRequestsCount: 0,
-        packages: isTutor ? [
-          { id: `pkg_${newId}_1`, name: 'Starter Pass (4 Sessions)', sessionCount: 4, pricePula: 600 },
-          { id: `pkg_${newId}_2`, name: 'Intensive Pass (8 Sessions)', sessionCount: 8, pricePula: 1100, isBestValue: true }
-        ] : []
+        packages: []
       };
 
       setUsers(prev => [newUser, ...prev.filter(u => u.email.trim().toLowerCase() !== cleanEmail)]);
-
-      if (!isTutor) {
-        setCurrentUser(newUser);
-      }
+      setCurrentUser(newUser);
 
       // Sync user to Firestore
       try {
@@ -377,6 +435,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isDemoAccount = INITIAL_USERS.some(u => u.email.trim().toLowerCase() === cleanEmail);
     if (isDemoAccount) {
       return { success: false, error: 'This is a protected demo email address. Please use your personal email address.' };
+    }
+
+    // Check if email already exists in system
+    const existingUser = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (existingUser) {
+      if (existingUser.role !== data.role) {
+        return {
+          success: false,
+          error: `This email (${cleanEmail}) is already registered as a ${existingUser.role.toUpperCase()} on LearnLink. An account cannot be both a student and a tutor. Please sign in as a ${existingUser.role} or use a different email.`
+        };
+      }
+      return {
+        success: false,
+        error: `An account for ${cleanEmail} already exists on LearnLink. Please switch to the Sign In tab to log in.`
+      };
     }
 
     if (isPhoneTaken(data.phoneNumber, data.email)) {

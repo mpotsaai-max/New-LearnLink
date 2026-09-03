@@ -17,6 +17,7 @@ import { StudentDashboardView } from './views/StudentDashboardView';
 import { TutorDashboardView } from './views/TutorDashboardView';
 import { AdminDashboardView } from './views/AdminDashboardView';
 import { AuthModal } from './views/AuthModal';
+import { UserRole } from './types';
 
 export const AppContent: React.FC = () => {
   const { activeDailySession, setActiveDailySession, completeSessionAndReleaseEscrow } = useApp();
@@ -26,6 +27,7 @@ export const AppContent: React.FC = () => {
   // Auth modal
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authRole, setAuthRole] = useState<UserRole>('student');
 
   // Terms Modal State
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -36,8 +38,9 @@ export const AppContent: React.FC = () => {
     setIsTermsOpen(true);
   };
 
-  const handleOpenAuth = (mode: 'login' | 'register') => {
+  const handleOpenAuth = (mode: 'login' | 'register', role: UserRole = 'student') => {
     setAuthMode(mode);
+    setAuthRole(role);
     setIsAuthOpen(true);
   };
 
@@ -214,6 +217,7 @@ export const AppContent: React.FC = () => {
       {isAuthOpen && (
         <AuthModal
           initialMode={authMode}
+          initialRole={authRole}
           onClose={() => setIsAuthOpen(false)}
           onSuccess={() => {}}
           onOpenTermsModal={handleOpenTerms}

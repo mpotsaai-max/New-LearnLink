@@ -20,10 +20,12 @@ import {
   X
 } from 'lucide-react';
 
+import { UserRole } from '../types';
+
 interface NavbarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
-  onOpenAuthModal: (mode: 'login' | 'register') => void;
+  onOpenAuthModal: (mode: 'login' | 'register', role?: UserRole) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpenAuthModal }) => {
@@ -321,13 +323,28 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
           >
             <Search className="w-4 h-4 text-[#feae2c]" /> Find Tutors
           </button>
-          {currentUser && (
+          {currentUser ? (
             <button
               onClick={() => handleNavClick(currentUser.role === 'admin' ? 'admin_dashboard' : currentUser.role === 'tutor' ? 'tutor_dashboard' : 'student_dashboard')}
               className="w-full text-left px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 rounded-lg flex items-center gap-2"
             >
               <LayoutDashboard className="w-4 h-4 text-[#feae2c]" /> My Dashboard
             </button>
+          ) : (
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); onOpenAuthModal('login'); }}
+                className="w-full py-2.5 px-3 text-center text-sm font-semibold text-white bg-white/10 rounded-xl"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); onOpenAuthModal('register', 'student'); }}
+                className="w-full py-2.5 px-3 text-center text-sm font-bold text-[#022448] bg-[#feae2c] rounded-xl"
+              >
+                Join LearnLink
+              </button>
+            </div>
           )}
         </div>
       )}
