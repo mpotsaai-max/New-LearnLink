@@ -1,9 +1,12 @@
 {
-  apiKey: "AIzaSyBQMoXcKwGxuAbyZqecPi0rvyHni8Glogw",
-  authDomain: "learnlink-firebase.firebaseapp.com",
-  projectId: "learnlink-firebase",
-  storageBucket: "learnlink-firebase.firebasestorage.app",
-  messagingSenderId: "390472828238",
-  appId: "1:390472828238:web:574f02cc8775da6ff94a1f"
-};
+  "projectId": "learnlink-firebase",
+  "appId": "1:390472828238:web:574f02cc8775da6ff94a1f"
+  "apiKey": "AIzaSyBQMoXcKwGxuAbyZqecPi0rvyHni8Glogw",
+  "authDomain": "learnlink-firebase.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-4ef3c985-14f4-4a89-9deb-f4eb8dbd214a",
+  "storageBucket": "learnlink-firebase.firebasestorage.app",
+  "messagingSenderId": "390472828238",
+  "measurementId": "",
+  "oAuthClientId": "1086750878645-ot86mekei9sspgiii58v4aa85tok01mf.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }
