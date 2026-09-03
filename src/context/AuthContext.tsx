@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
 import { INITIAL_USERS } from '../data/initialData';
-import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  sendEmailVerification 
+  sendEmailVerification,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { db, auth } from '../firebase/config';
 
@@ -18,6 +20,12 @@ interface AuthContextType {
     error?: string;
     requiresEmailVerification?: boolean;
     unverifiedUser?: UserProfile;
+  }>;
+  signInWithGoogle: (preferredRole?: UserRole) => Promise<{
+    success: boolean;
+    error?: string;
+    user?: UserProfile;
+    isNewUser?: boolean;
   }>;
   register: (userData: {
     fullName: string;
@@ -45,6 +53,7 @@ interface AuthContextType {
   logout: () => void;
   switchDemoUser: (role: UserRole) => void;
   updateUserProfile: (id: string, updates: Partial<UserProfile>) => void;
+  deleteUserByEmail: (email: string) => Promise<void>;
   isEmailTaken: (email: string) => boolean;
   isPhoneTaken: (phone: string) => boolean;
 }
@@ -82,20 +91,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const unsub = onSnapshot(
         collection(db, 'users'),
         (snapshot) => {
-          if (!snapshot.empty) {
-            const remoteUsers: UserProfile[] = [];
-            snapshot.forEach((docSnap) => {
-              remoteUsers.push(docSnap.data() as UserProfile);
-            });
+          const remoteUsers: UserProfile[] = [];
+          snapshot.forEach((docSnap) => {
+            remoteUsers.push(docSnap.data() as UserProfile);
+          });
 
-            setUsers(prev => {
-              const map = new Map<string, UserProfile>();
-              INITIAL_USERS.forEach(u => map.set(u.id, u));
-              prev.forEach(u => map.set(u.id, u));
-              remoteUsers.forEach(u => map.set(u.id, u));
-              return Array.from(map.values());
-            });
-          }
+          setUsers(() => {
+            const map = new Map<string, UserProfile>();
+            // Add initial demo baseline users
+            INITIAL_USERS.forEach(u => map.set(u.id, u));
+            // Add all live remote users from Firestore
+            remoteUsers.forEach(u => map.set(u.id, u));
+            const updated = Array.from(map.values());
+            localStorage.setItem('learnlink_users', JSON.stringify(updated));
+            return updated;
+          });
         },
         (err) => {
           console.warn('Firestore user listener notice:', err);
@@ -118,12 +128,132 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   const isEmailTaken = (email: string) => {
-    return users.some(u => u.email.trim().toLowerCase() === email.trim().toLowerCase());
+    const cleanEmail = email.trim().toLowerCase();
+    // Protect demo accounts
+    if (INITIAL_USERS.some(u => u.email.trim().toLowerCase() === cleanEmail)) {
+      return true;
+    }
+    return users.some(u => u.email.trim().toLowerCase() === cleanEmail);
   };
 
-  const isPhoneTaken = (phone: string) => {
+  const isPhoneTaken = (phone: string, currentEmail?: string) => {
+    if (!phone || phone.trim().length < 6) return false;
     const clean = phone.replace(/\s+/g, '');
-    return users.some(u => u.phoneNumber.replace(/\s+/g, '') === clean);
+    return users.some(u => {
+      if (currentEmail && u.email.trim().toLowerCase() === currentEmail.trim().toLowerCase()) {
+        return false;
+      }
+      return u.phoneNumber.replace(/\s+/g, '') === clean;
+    });
+  };
+
+  const signInWithGoogle = async (preferredRole: UserRole = 'student'): Promise<{
+    success: boolean;
+    error?: string;
+    user?: UserProfile;
+    isNewUser?: boolean;
+  }> => {
+    try {
+      if (!auth) {
+        return { success: false, error: 'Firebase authentication is not initialized.' };
+      }
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result.user;
+      const cleanEmail = (fbUser.email || '').trim().toLowerCase();
+
+      if (!cleanEmail) {
+        return { success: false, error: 'No email address found in this Google Account.' };
+      }
+
+      // Check if user already exists in system
+      const existing = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
+
+      if (existing) {
+        if (existing.status === 'suspended') {
+          return { success: false, error: 'Your account has been suspended by LearnLink Admin. Please contact support@learnlink.co.bw.' };
+        }
+        if (existing.role === 'tutor' && (existing.status === 'pending_verification' || !existing.isVerifiedTutor)) {
+          return {
+            success: false,
+            error: 'Your tutor registration is currently pending admin verification and document review. Tutors cannot log in until approved.'
+          };
+        }
+        // Google accounts are pre-verified by Google
+        const verifiedUser = { ...existing, emailVerified: true };
+        setCurrentUser(verifiedUser);
+        return { success: true, user: verifiedUser, isNewUser: false };
+      }
+
+      // New registration via Google Account
+      const isTutor = preferredRole === 'tutor';
+      const newId = `usr_g_${Date.now()}`;
+      const newUser: UserProfile = {
+        id: newId,
+        email: cleanEmail,
+        fullName: fbUser.displayName || cleanEmail.split('@')[0],
+        phoneNumber: fbUser.phoneNumber || '',
+        role: preferredRole,
+        status: isTutor ? 'pending_verification' : 'active',
+        isVerifiedTutor: false,
+        emailVerified: true, // Google accounts are verified by Google!
+        avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+        joinedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        rating: 0,
+        reviewCount: 0,
+        totalEarningsPula: 0,
+        activeStudentsCount: 0,
+        pendingRequestsCount: 0,
+        packages: isTutor ? [
+          { id: `pkg_${newId}_1`, name: 'Starter Pass (4 Sessions)', sessionCount: 4, pricePula: 600 },
+          { id: `pkg_${newId}_2`, name: 'Intensive Pass (8 Sessions)', sessionCount: 8, pricePula: 1100, isBestValue: true }
+        ] : []
+      };
+
+      setUsers(prev => [newUser, ...prev.filter(u => u.email.trim().toLowerCase() !== cleanEmail)]);
+
+      if (!isTutor) {
+        setCurrentUser(newUser);
+      }
+
+      // Sync user to Firestore
+      try {
+        await setDoc(doc(db, 'users', newId), newUser);
+      } catch (e) {
+        console.warn('Firestore Google user save notice:', e);
+      }
+
+      return { success: true, user: newUser, isNewUser: true };
+    } catch (err: any) {
+      console.warn('Google sign-in notice:', err);
+      if (err?.code === 'auth/popup-blocked') {
+        return { 
+          success: false, 
+          error: 'The Google Sign-In popup window was blocked by your browser. Please allow popups or open LearnLink in a new tab.' 
+        };
+      }
+      if (err?.code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'Google sign-in window was closed before completing.' };
+      }
+      if (err?.code === 'auth/cancelled-popup-request') {
+        return { success: false, error: 'Another sign-in window is already open.' };
+      }
+      if (err?.code === 'auth/operation-not-allowed') {
+        return { 
+          success: false, 
+          error: 'Google Sign-In is not enabled yet in your Firebase Console. Go to Authentication > Sign-in method, click "Add new provider", select "Google", and enable it.' 
+        };
+      }
+      if (err?.code === 'auth/unauthorized-domain') {
+        return {
+          success: false,
+          error: 'Domain not authorized in Firebase. Add this domain or learnlink.ink to Firebase Console > Authentication > Settings > Authorized domains.'
+        };
+      }
+      return { success: false, error: err?.message || 'Failed to authenticate with Google.' };
+    }
   };
 
   const login = async (email: string, pass: string): Promise<{
@@ -241,11 +371,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     academicRecordDocUrl?: string;
     omangIdDocUrl?: string;
   }): Promise<{ success: boolean; error?: string; user?: UserProfile; firebaseEmailSent?: boolean }> => {
-    // Unique Email & Phone validation check
-    if (isEmailTaken(data.email)) {
-      return { success: false, error: 'An account with this email address already exists.' };
+    const cleanEmail = data.email.trim().toLowerCase();
+
+    // Protect hardcoded initial demo accounts from being overwritten
+    const isDemoAccount = INITIAL_USERS.some(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (isDemoAccount) {
+      return { success: false, error: 'This is a protected demo email address. Please use your personal email address.' };
     }
-    if (isPhoneTaken(data.phoneNumber)) {
+
+    if (isPhoneTaken(data.phoneNumber, data.email)) {
       return { success: false, error: 'An account with this mobile phone number already exists.' };
     }
 
@@ -329,7 +463,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       emailVerified: isTutor ? false : false // Requires email verification for students
     };
 
-    setUsers(prev => [newUser, ...prev]);
+    setUsers(prev => [newUser, ...prev.filter(u => u.email.trim().toLowerCase() !== cleanEmail)]);
 
     // Do NOT log in tutors automatically upon registration because approval is mandatory
     if (!isTutor) {
@@ -431,12 +565,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteUserByEmail = async (email: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (found) {
+      try {
+        await deleteDoc(doc(db, 'users', found.id));
+      } catch (e) {
+        console.warn('Firestore deleteDoc notice:', e);
+      }
+    }
+    setUsers(prev => {
+      const updated = prev.filter(u => u.email.trim().toLowerCase() !== cleanEmail);
+      localStorage.setItem('learnlink_users', JSON.stringify(updated));
+      return updated;
+    });
+    if (currentUser?.email.trim().toLowerCase() === cleanEmail) {
+      setCurrentUser(null);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         currentUser,
         users,
         login,
+        signInWithGoogle,
         register,
         verifyStudentEmail,
         resendVerificationEmail,
@@ -444,6 +599,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         switchDemoUser,
         updateUserProfile,
+        deleteUserByEmail,
         isEmailTaken,
         isPhoneTaken,
       }}

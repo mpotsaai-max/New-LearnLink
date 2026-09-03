@@ -20,7 +20,7 @@ import { useApp } from '../context/AppContext';
 import { UserProfile } from '../types';
 
 export const AdminDashboardView: React.FC = () => {
-  const { currentUser, users, updateUserProfile, switchDemoUser } = useAuth();
+  const { currentUser, users, updateUserProfile, switchDemoUser, deleteUserByEmail } = useAuth();
   const {
     transactions,
     approveTutorVerification,
@@ -398,21 +398,32 @@ export const AdminDashboardView: React.FC = () => {
 
                       <td className="p-3 text-right">
                         {u.role !== 'admin' && (
-                          u.status === 'active' ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {u.status === 'active' ? (
+                              <button
+                                onClick={() => suspendUserAccount(u.id)}
+                                className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold text-[11px] rounded-lg border border-amber-200"
+                              >
+                                Suspend
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => activateUserAccount(u.id)}
+                                className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[11px] rounded-lg border border-emerald-200"
+                              >
+                                Reactivate
+                              </button>
+                            )}
                             <button
-                              onClick={() => suspendUserAccount(u.id)}
-                              className="px-3 py-1 bg-red-100 text-red-700 font-bold text-[11px] rounded-lg hover:bg-red-200"
+                              onClick={() => {
+                                deleteUserByEmail(u.email);
+                              }}
+                              title="Delete profile document from database"
+                              className="px-2.5 py-1 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-[11px] rounded-lg border border-red-200"
                             >
-                              Suspend Account
+                              Delete
                             </button>
-                          ) : (
-                            <button
-                              onClick={() => activateUserAccount(u.id)}
-                              className="px-3 py-1 bg-emerald-100 text-emerald-700 font-bold text-[11px] rounded-lg hover:bg-emerald-200"
-                            >
-                              Reactivate
-                            </button>
-                          )
+                          </div>
                         )}
                       </td>
                     </tr>
